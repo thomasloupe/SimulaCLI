@@ -37,14 +37,14 @@ let commandHistory = [];
 
 function executeCommand(input) {
   commandHistory.push(input); // Add command to history
+}
 
 function downloadFile(fileName) {
-  // Construct the URL to the file in the downloads directory
-  const url = `/downloads/${fileName}`;
-  // Use an anchor tag to initiate the download
+  // Update the path to reflect the new location of the downloads folder
+  const url = `os/downloads/${fileName}`;
   const a = document.createElement('a');
   a.href = url;
-  a.download = fileName; // Suggests a filename to save as
+  a.download = fileName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
