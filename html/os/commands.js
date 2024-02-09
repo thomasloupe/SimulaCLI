@@ -82,7 +82,8 @@ const commands = {
     return '';
   },
   'whoami': () => "user",
-  'su': () => "Switched to root user",
+  'help': () => "Available commands: ls, cd, clear, whoami, help, reboot, shutdown, exit, history, ifconfig, ip addr, echo, cat, scp, su, sudo.",
+  'su': () => "Cannot switch users.",
   'sudo': (command) => `Executed '${command}' as root`,
   'pwd': () => currentPath,
   'reboot': () => "Rebooting system...",

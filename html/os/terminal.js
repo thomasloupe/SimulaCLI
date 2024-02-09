@@ -7,6 +7,19 @@ const backgroundAudio = document.getElementById('backgroundAudio');
 const nextAudio = document.getElementById('nextAudio');
 const returnSound = document.getElementById('returnSound');
 
+async function displayMotd() {
+    try {
+        const response = await fetch('os/etc/motd');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const motdText = await response.text();
+        terminal.innerHTML += `<pre>${motdText}</pre>`;
+    } catch (error) {
+        console.error('Could not load motd:', error);
+    }
+}
+
 function playReturnSound() {
     // Play the return sound
     returnSound.currentTime = 0; // Rewind to the start if already playing
@@ -34,5 +47,17 @@ backgroundAudio.addEventListener('ended', function() {
 document.addEventListener('click', function() {
     if(backgroundAudio.paused) {
         backgroundAudio.play().catch(error => console.log('Audio play failed:', error));
+    }
+});
+
+// This variable is used to ensure the MOTD is only displayed once
+let motdDisplayed = false;
+
+document.addEventListener('click', function handleFirstClick() {
+    if (!motdDisplayed) {
+        displayMotd();
+        motdDisplayed = true;
+        // Optionally, remove the event listener if you don't need it anymore
+        // document.removeEventListener('click', handleFirstClick);
     }
 });
