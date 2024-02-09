@@ -1,0 +1,27 @@
+{
+  "/": {
+    "music": {
+      "type": "directory",
+      "children": {
+        "readme.txt": {
+          "type": "file",
+          "content": "This is the content of readme.txt",
+          "downloadable": true
+        },
+        "dontlook": {
+          "type": "directory",
+          "children": {}
+        }
+      }
+    },
+    "img": {
+      "type": "directory",
+      "children": {}
+    },
+    "about.txt": {
+      "type": "file",
+      "content": "This is the content of about.txt",
+      "downloadable": false
+    }
+  }
+}
