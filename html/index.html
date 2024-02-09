@@ -29,26 +29,23 @@
 </head>
 <body>
 
-<div id="terminal"></div>
-<input type="text" id="commandInput">
-
-<audio id="backgroundAudio" preload="auto">
-    <source src="terminal.mp3" type="audio/mpeg">
-    Your browser does not support the audio element.
-</audio>
-
-<audio id="nextAudio" loop preload="auto">
-    <source src="terminal1.mp3" type="audio/mpeg">
-    Your browser does not support the audio element.
-</audio>
-
-<audio id="returnSound" preload="auto">
-    <source src="return.mp3" type="audio/mpeg">
-    Your browser does not support the audio element.
-</audio>
-
-<script src="commands.js"></script>
-<script src="terminal.js"></script>
+    <div id="terminal"></div>
+    <input type="text" id="commandInput">
+    
+    <audio id="backgroundAudio" preload="auto">
+        <source src="os/sfx/terminal.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="nextAudio" loop preload="auto">
+        <source src="os/sfx/terminal1.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="returnSound" preload="auto">
+        <source src="os/sfx/return.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script src="os/commands.js"></script>
+    <script src="os/terminal.js"></script>
 
 </body>
 </html>
