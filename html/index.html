@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Terminal</title>
+    <style>
+        #terminal {
+            background-color: #000;
+            color: #0f0;
+            height: 800px;
+            overflow-y: auto;
+        }
+        input {
+            width: 100%;
+            color: #0f0;
+            background-color: #000;
+            border: 1px;
+            border-style: groove;
+            padding: 10px;
+            font-size: 16px;
+            caret-color: #0f0;
+        }
+        input:focus {
+            outline: none;
+        }
+        .folder {
+            color: #F80;
+        }
+    </style>
+</head>
+<body>
+
+<div id="terminal"></div>
+<input type="text" id="commandInput">
+
+<audio id="backgroundAudio" preload="auto">
+    <source src="terminal.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+</audio>
+
+<audio id="nextAudio" loop preload="auto">
+    <source src="terminal1.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+</audio>
+
+<audio id="returnSound" preload="auto">
+    <source src="return.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+</audio>
+
+<script src="commands.js"></script>
+<script src="terminal.js"></script>
+
+</body>
+</html>
