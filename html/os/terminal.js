@@ -50,14 +50,10 @@ document.addEventListener('click', function() {
     }
 });
 
-// This variable is used to ensure the MOTD is only displayed once
-let motdDisplayed = false;
-
-document.addEventListener('click', function handleFirstClick() {
-    if (!motdDisplayed) {
-        displayMotd();
-        motdDisplayed = true;
-        // Optionally, remove the event listener if you don't need it anymore
-        // document.removeEventListener('click', handleFirstClick);
+document.addEventListener('click', function handleBackgroundAudioPlay() {
+    if (backgroundAudio.paused) {
+        backgroundAudio.play().catch(error => console.log('Audio play failed:', error));
+        // Remove the event listener after playing the backgroundAudio for the first time
+        document.removeEventListener('click', handleBackgroundAudioPlay);
     }
 });
