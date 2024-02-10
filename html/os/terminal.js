@@ -16,6 +16,7 @@ async function displayMotd() {
             throw new Error('Network response was not ok');
         }
         const motdText = await response.text();
+        // Ensure the MOTD is correctly appended to the terminal content
         terminal.innerHTML += `<pre>${motdText}</pre>`;
     } catch (error) {
         console.error('Could not load motd:', error);
@@ -32,7 +33,7 @@ commandInput.addEventListener('keydown', function(event) {
         playReturnSound();
         const command = commandInput.value.trim();
         console.log(`Executing command: ${command}`);
-        const response = executeCommand(command);
+        const response = executeCommand(command); // Make sure executeCommand function is defined and working
         terminal.innerHTML += `<div>> ${command}</div>`;
         terminal.innerHTML += `<div>${response}</div>`;
         commandInput.value = ''; // Clear input after command
@@ -40,24 +41,25 @@ commandInput.addEventListener('keydown', function(event) {
     }
 });
 
+// Adjusted to avoid duplicate 'ended' event listener registration
 backgroundAudio.addEventListener('ended', function() {
     backgroundAudioPlayed = true; // Mark background audio as played when it ends
-    nextAudio.play(); // Start playing nextAudio (looping) after backgroundAudio ends
+    nextAudio.play(); // Ensure nextAudio starts playing after backgroundAudio ends
 });
 
-document.addEventListener('click', function handleBackgroundAudioPlay() {
+let motdTriggered = false;
+
+document.addEventListener('click', function triggerMotd() {
+    if (!motdTriggered) { // Corrected the syntax here
+        displayMotd();
+        motdTriggered = true;
+    }
+});
+
+// Consolidate click event listener for initial audio play
+document.addEventListener('click', function handleInitialAudioPlay() {
     if (backgroundAudio.paused && !backgroundAudioPlayed) {
         backgroundAudio.play().catch(error => console.log('Audio play failed:', error));
     }
-});
-
-// Existing code for backgroundAudio and nextAudio
-backgroundAudio.addEventListener('ended', function() {
-    nextAudio.play(); // nextAudio is already set to loop in its attributes
-});
-
-document.addEventListener('click', function() {
-    if(backgroundAudio.paused) {
-        backgroundAudio.play().catch(error => console.log('Audio play failed:', error));
-    }
+    // This listener remains to handle initial play and does not need removal after first play because of the flag check
 });
