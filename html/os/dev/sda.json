@@ -1,27 +1,102 @@
 {
   "/": {
-    "music": {
-      "type": "directory",
-      "children": {
-        "readme.txt": {
-          "type": "file",
-          "content": "This is the content of readme.txt",
-          "downloadable": true
-        },
-        "dontlook": {
-          "type": "directory",
-          "children": {}
+    "type": "directory",
+    "owner": "root",
+    "permissions": "rwx",
+    "children": {
+      "img": {
+        "type": "directory",
+        "owner": "root",
+        "permissions": "rwx",
+        "children": {
+          "image1": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": true,
+            "playable": false,
+            "content": "This is a dummy content for image1"
+          },
+          "image2": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": true,
+            "playable": false,
+            "content": "This is a dummy content for image2"
+          },
+          "image3": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": true,
+            "playable": false,
+            "content": "This is a dummy content for image3"
+          }
+        }
+      },
+      "music": {
+        "type": "directory",
+        "owner": "root",
+        "permissions": "rwx",
+        "children": {
+          "track1.mp3": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": false,
+            "playable": true,
+            "content": "This is a dummy content for track1.mp3"
+          },
+          "track2.mp3": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": false,
+            "playable": true,
+            "content": "This is a dummy content for track2.mp3"
+          },
+          "track3.mp3": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": false,
+            "playable": true,
+            "content": "This is a dummy content for track3.mp3"
+          },
+          "track4.mp3": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": false,
+            "playable": true,
+            "content": "This is a dummy content for track4.mp3"
+          }
+        }
+      },
+      "dontlook": {
+        "type": "directory",
+        "owner": "root",
+        "permissions": "rwx",
+        "children": {
+          "dontwatch.mp4": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": true,
+            "playable": true,
+            "content": "This is a dummy content for dontwatch.mp4"
+          }
         }
       }
-    },
-    "img": {
-      "type": "directory",
-      "children": {}
-    },
-    "about.txt": {
-      "type": "file",
-      "content": "This is the content of about.txt",
-      "downloadable": false
     }
   }
 }

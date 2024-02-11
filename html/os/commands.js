@@ -157,4 +157,36 @@ const commands = {
       return `scp: ${fileName}: No such file or directory or not downloadable.`;
     }
   },
+  'view': (fileName) => {
+    // Ensure the file exists and is a file
+    if (currentDirectory[fileName] && currentDirectory[fileName].type === "file") {
+      // Check if the file is viewable
+      if (currentDirectory[fileName].viewable) {
+        const url = `os/downloads/${fileName}`;
+        // Open the viewable file URL in a new tab
+        window.open(url, '_blank');
+        return `Viewing ${fileName}...`;
+      } else {
+        return `Error: ${fileName} is not viewable.`;
+      }
+    } else {
+      return `view: ${fileName}: No such file or directory`;
+    }
+  },
+  'play': (fileName) => {
+    // Ensure the file exists and is a file
+    if (currentDirectory[fileName] && currentDirectory[fileName].type === "file") {
+      // Check if the file is playable
+      if (currentDirectory[fileName].playable) {
+        const url = `os/downloads/${fileName}`;
+        // Open the playable file URL in a new tab for playing
+        window.open(url, '_blank');
+        return `Playing ${fileName}...`;
+      } else {
+        return `Error: ${fileName} is not playable.`;
+      }
+    } else {
+      return `play: ${fileName}: No such file or directory`;
+    }
+  },
 };
