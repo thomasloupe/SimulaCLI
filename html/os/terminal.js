@@ -37,7 +37,7 @@ commandInput.addEventListener('keydown', async function(event) {
 
         console.log('Calling executeCommand with:', command);
         executeCommand(command).then(response => {
-            if (response !== undefined) {
+            if (response !== undefined) { // Only append if response is not undefined
                 terminal.innerHTML += `<div>${response}</div>`;
             }
             commandInput.value = '';
