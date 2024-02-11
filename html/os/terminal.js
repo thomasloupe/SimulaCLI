@@ -6,7 +6,7 @@ const backgroundAudio = document.getElementById('backgroundAudio');
 const nextAudio = document.getElementById('nextAudio');
 const returnSound = document.getElementById('returnSound');
 
-let backgroundAudioPlayed = false; // Flag to indicate if the background audio has been played
+let backgroundAudioPlayed = false;
 
 export async function displayMotd() {
     try {
@@ -15,7 +15,6 @@ export async function displayMotd() {
             throw new Error('Network response was not ok');
         }
         const motdText = await response.text();
-        // Ensure the MOTD is correctly appended to the terminal content
         terminal.innerHTML += `<pre>${motdText}</pre>`;
     } catch (error) {
         console.error('Could not load motd:', error);
@@ -23,7 +22,7 @@ export async function displayMotd() {
 }
 
 function playReturnSound() {
-    returnSound.currentTime = 0; // Rewind to the start if already playing
+    returnSound.currentTime = 0;
     returnSound.play().catch(error => console.log('Return sound play failed:', error));
 }
 
@@ -32,33 +31,30 @@ commandInput.addEventListener('keydown', function(event) {
         playReturnSound();
         const command = commandInput.value.trim();
         console.log(`Executing command: ${command}`);
-        const response = executeCommand(command); // Make sure executeCommand function is defined and working
+        const response = executeCommand(command);
         terminal.innerHTML += `<div>> ${command}</div>`;
         terminal.innerHTML += `<div>${response}</div>`;
-        commandInput.value = ''; // Clear input after command
-        terminal.scrollTop = terminal.scrollHeight; // Auto-scroll to the bottom
+        commandInput.value = '';
+        terminal.scrollTop = terminal.scrollHeight;
     }
 });
 
-// Adjusted to avoid duplicate 'ended' event listener registration
 backgroundAudio.addEventListener('ended', function() {
-    backgroundAudioPlayed = true; // Mark background audio as played when it ends
-    nextAudio.play(); // Ensure nextAudio starts playing after backgroundAudio ends
+    backgroundAudioPlayed = true;
+    nextAudio.play();
 });
 
 let motdTriggered = false;
 
 document.addEventListener('click', function triggerMotd() {
-    if (!motdTriggered) { // Corrected the syntax here
+    if (!motdTriggered) {
         displayMotd();
         motdTriggered = true;
     }
 });
 
-// Consolidate click event listener for initial audio play
 document.addEventListener('click', function handleInitialAudioPlay() {
     if (backgroundAudio.paused && !backgroundAudioPlayed) {
         backgroundAudio.play().catch(error => console.log('Audio play failed:', error));
     }
-    // This listener remains to handle initial play and does not need removal after first play because of the flag check
 });
