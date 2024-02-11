@@ -7,6 +7,7 @@ let fileSystem = {};
 let currentDirectory = {};
 let currentPath = "/";
 let commandHistory = [];
+let isAuthenticatedAsRoot = false;
 
 async function loadFileSystem() {
   try {
@@ -24,51 +25,66 @@ async function loadFileSystem() {
 loadFileSystem();
 
 window.executeCommand = async function(input) {
+  console.log('executeCommand attached to window:', 'executeCommand' in window);
   commandHistory.push(input);
-
   const [command, ...args] = input.split(' ');
-  // Assume the first argument is the target name for simplicity; adjust as needed
-  const targetName = args[0];
 
-  // Function to recursively find the target object based on the path or name
-  async function findTargetObject(currentDirectory, targetName) {
-      if (!targetName || targetName === '.' || targetName === '/') return currentDirectory;
-      const pathParts = targetName.split('/');
-      let target = currentDirectory;
-
-      for (let part of pathParts) {
-          if (part === '..') {
-              // Move up in the directory structure
-              // This is a simplification and might need adjustment based on your actual directory tracking
-              continue;
-          } else if (target.children && target.children[part]) {
-              target = target.children[part];
-          } else {
-              // Target not found
-              return null;
+  // Handling for 'ls' and 'll' commands directly
+  if (command === 'ls' || command === 'll') {
+      try {
+          const response = await commands[command](...args);
+          if (response !== undefined) {
+              document.getElementById('terminal').innerHTML += `<div>${response}</div>`;
           }
+      } catch (error) {
+          document.getElementById('terminal').innerHTML += `<div>Error executing ${command}: ${error.message}</div>`;
       }
-
-      return target;
+      return; // Early return for these commands
   }
 
-  // Determine if the target requires superuser access
-  const targetObject = await findTargetObject(currentDirectory, targetName);
-  const requiresSuperuser = targetObject && targetObject.superuser;
+  // Handling for commands that may require superuser access
+  let targetPath = args[0] || "";
+  let target = await findTarget(targetPath, currentDirectory); // Ensure findTarget can handle async operations if necessary
 
-  if (requiresSuperuser && !isAuthenticatedAsRoot) {
-      const isAuthenticated = await promptForSuperuserPassword();
-      if (!isAuthenticated) {
-          console.log("su: Authentication failure");
-          return "su: Authentication failure";
+  // Check for superuser requirement
+  if (target && target.superuser && !isAuthenticatedAsRoot) {
+      const authenticated = await promptForSuperuserPassword();
+      if (!authenticated) {
+          document.getElementById('terminal').innerHTML += "<div>su: Authentication failure</div>";
+          return; // Stop execution if not authenticated
       }
   }
 
-  // Execute the command if no superuser authentication is required or if authentication is successful
-  const response = commands[command] ? await commands[command](...args) : `${input}: command not found`;
-  console.log(`Command input: ${input}`, `Response: ${response}`);
-  return response;
-};
+  if (commands[command]) {
+      try {
+          const response = await commands[command](...args);
+          if (response !== undefined) {
+              document.getElementById('terminal').innerHTML += `<div>${response}</div>`;
+          }
+      } catch (error) {
+          document.getElementById('terminal').innerHTML += `<div>Error executing ${command}: ${error.message}</div>`;
+      }
+  } else {
+      document.getElementById('terminal').innerHTML += `<div>${command}: command not found</div>`;
+  }
+}
+
+function findTarget(path, currentDir) {
+  const parts = path.split('/').filter(Boolean);
+  let target = currentDir;
+
+  for (const part of parts) {
+    if (part === '..') {
+      continue;
+    }
+    if (target.children && target.children[part]) {
+      target = target.children[part];
+    } else {
+      return null;
+    }
+  }
+  return target;
+}
 
 function downloadFile(fileName) {
   const url = `os/downloads/${fileName}`;
@@ -80,16 +96,15 @@ function downloadFile(fileName) {
   document.body.removeChild(a);
 }
 
-const commands =
-{
-  'cat': (fileName) => {
+const commands = {
+  'cat': async (fileName) => {
     if (currentDirectory[fileName] && currentDirectory[fileName].type === "file") {
       return currentDirectory[fileName].content;
     } else {
       return `cat: ${fileName}: No such file or directory`;
     }
   },
-  'cd': (directory) => {
+  'cd': async (directory) => {
     if (directory === "..") {
       if (currentPath !== "/") {
         let newPath = currentPath.endsWith("/") ? currentPath.slice(0, -1) : currentPath;
@@ -115,17 +130,17 @@ const commands =
     }
     return "";
   },
-  'clear': () => {
+  'clear': async () => {
     document.getElementById('terminal').innerHTML = '';
     return '';
   },
-  'echo': (...args) => args.join(' '),
-  'exit': () => "Connection to localhost closed...",
-  'help': () => {
+  'echo': async (...args) => args.join(' '),
+  'exit': async () => "Connection to localhost closed...",
+  'help': async () => {
     return "Available commands:<br>" +
       "cat - Display the content of a file.<br>" +
       "cd - Change the current directory.<br>" +
-      "cd .. - Change the current directory.<br>" +
+      "cd .. - Go up one directory level.<br>" +
       "clear - Clear the terminal screen.<br>" +
       "echo - Display a line of text.<br>" +
       "exit - Exit the terminal.<br>" +
@@ -143,10 +158,10 @@ const commands =
       "view - View an image file in a new tab.<br>" +
       "whoami - Display the current user.";
   },
-  'history': () => commandHistory.map((cmd, index) => `${index + 1} ${cmd}`).join('</br>'),
-  'ifconfig': () => "inet 127.0.0.1 netmask 255.0.0.0",
-  'ip_addr': () => "inet 127.0.0.1/8 scope host lo",
-  'll': () => {
+  'history': async () => commandHistory.map((cmd, index) => `${index + 1} ${cmd}`).join('</br>'),
+  'ifconfig': async () => "inet 127.0.0.1 netmask 255.0.0.0",
+  'ip_addr': async () => "inet 127.0.0.1/8 scope host lo",
+  'll': async () => {
     const directoryContents = currentDirectory.children || currentDirectory;
     return Object.keys(directoryContents).map(item => {
       const itemDetails = directoryContents[item];
@@ -156,29 +171,26 @@ const commands =
       const size = itemDetails.size ? itemDetails.size : "0";
       return `${type}${permissions} 1 ${owner} ${owner} ${size} Feb 10 20:40 ${item}`;
     }).join('<br>');
-  },  
-  'ls': () => {
+  },
+  'ls': async () => {
     const directoryContents = currentDirectory.children || currentDirectory;
     return Object.keys(directoryContents).map(item => {
         const itemType = directoryContents[item].type === 'directory' ? `<span class="folder">${item}/</span>` : item;
         return itemType;
     }).join('</br>');
   },
-  'play': (fileName) => {
+  'play': async (fileName) => {
     const file = currentDirectory.children && currentDirectory.children[fileName];
-
     if (file && file.playable) {
       const url = file.goto ? file.goto : `os/downloads/${fileName}`;
-
       window.open(url, '_blank');
       return `Playing ${fileName}...`;
     } else {
       return `Error: ${fileName} is not playable or does not exist.`;
     }
   },
-  'pwd': () => currentPath,
-
-  'reboot': () => {
+  'pwd': async () => currentPath,
+  'reboot': async () => {
     const terminal = document.getElementById('terminal');
     terminal.innerHTML = "<div>Rebooting system...</div>";
 
@@ -211,11 +223,10 @@ const commands =
     }, 11000);
     return '';
   },
-  'scp': (fileName) => {
+  'scp': async (fileName) => {
     const file = currentDirectory.children && currentDirectory.children[fileName];
     if (file && file.type === "file" && file.downloadable) {
       const url = file.goto && file.goto !== "" ? file.goto : `os/downloads/${fileName}`;
-
       if (file.goto && file.goto !== "") {
         window.open(url, '_blank');
         return `Accessing ${fileName}...`;
@@ -227,18 +238,16 @@ const commands =
       return `scp: ${fileName}: No such file or directory or not downloadable.`;
     }
   },
-  'shutdown': () => "Shutting down...",
-  'view': (fileName) => {
+  'shutdown': async () => "Shutting down...",
+  'view': async (fileName) => {
     const file = currentDirectory.children && currentDirectory.children[fileName];
-
     if (file && file.viewable) {
       const url = file.goto && file.goto !== "" ? file.goto : `os/downloads/${fileName}`;
-
       window.open(url, '_blank');
       return `Viewing ${fileName}...`;
     } else {
       return `Error: ${fileName} is not viewable or does not exist.`;
     }
   },
-  'whoami': () => "user",
+  'whoami': async () => "user",
 };

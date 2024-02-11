@@ -28,16 +28,21 @@ function playReturnSound() {
     returnSound.play().catch(error => console.log('Return sound play failed:', error));
 }
 
-commandInput.addEventListener('keydown', function(event) {
+commandInput.addEventListener('keydown', async function(event) {
     if (event.key === 'Enter') {
         playReturnSound();
         const command = commandInput.value.trim();
         console.log(`Executing command: ${command}`);
-        const response = executeCommand(command);
         terminal.innerHTML += `<div>> ${command}</div>`;
-        terminal.innerHTML += `<div>${response}</div>`;
-        commandInput.value = '';
-        terminal.scrollTop = terminal.scrollHeight;
+
+        console.log('Calling executeCommand with:', command);
+        executeCommand(command).then(response => {
+            if (response !== undefined) { // Only append if response is not undefined
+                terminal.innerHTML += `<div>${response}</div>`;
+            }
+            commandInput.value = '';
+            terminal.scrollTop = terminal.scrollHeight;
+        }).catch(error => console.error('Command execution failed:', error));
     }
 });
 
