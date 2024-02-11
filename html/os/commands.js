@@ -16,7 +16,8 @@ async function loadFileSystem() {
       throw new Error('Network response was not ok');
     }
     fileSystem = await response.json();
-    console.log('File system loaded', fileSystem);
+    // Use below line for debug only!
+    // console.log('File system loaded', fileSystem);
     // Correctly initialize currentDirectory after the file system is loaded
     currentDirectory = fileSystem["/"]; // This should now work without error
   } catch (error) {
