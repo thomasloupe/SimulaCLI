@@ -1,3 +1,2 @@
-Contents of readme.txt!
-WOW!
-Your mom is hot!
+SimulaCLI - https://github.com/thomasloupe/simulacli
+Learn more about this project, and all of my work at https://thomasloupe.com!
