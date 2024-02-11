@@ -9,32 +9,35 @@
         "owner": "root",
         "permissions": "rwx",
         "children": {
-          "image1": {
+          "image1.jpg": {
             "type": "file",
             "owner": "root",
             "permissions": "rw-",
             "downloadable": true,
             "viewable": true,
             "playable": false,
-            "content": "This is a dummy content for image1"
+            "content": "",
+            "goto": ""
           },
-          "image2": {
+          "image2.jpg": {
             "type": "file",
             "owner": "root",
             "permissions": "rw-",
             "downloadable": true,
             "viewable": true,
             "playable": false,
-            "content": "This is a dummy content for image2"
+            "content": "",
+            "goto": ""
           },
-          "image3": {
+          "image3.jpg": {
             "type": "file",
             "owner": "root",
             "permissions": "rw-",
             "downloadable": true,
             "viewable": true,
             "playable": false,
-            "content": "This is a dummy content for image3"
+            "content": "",
+            "goto": ""
           }
         }
       },
@@ -50,7 +53,8 @@
             "downloadable": true,
             "viewable": false,
             "playable": true,
-            "content": "This is a dummy content for track1.mp3"
+            "content": "",
+            "goto": ""
           },
           "track2.mp3": {
             "type": "file",
@@ -59,7 +63,8 @@
             "downloadable": true,
             "viewable": false,
             "playable": true,
-            "content": "This is a dummy content for track2.mp3"
+            "content": "",
+            "goto": ""
           },
           "track3.mp3": {
             "type": "file",
@@ -68,7 +73,8 @@
             "downloadable": true,
             "viewable": false,
             "playable": true,
-            "content": "This is a dummy content for track3.mp3"
+            "content": "",
+            "goto": ""
           },
           "track4.mp3": {
             "type": "file",
@@ -77,7 +83,8 @@
             "downloadable": true,
             "viewable": false,
             "playable": true,
-            "content": "This is a dummy content for track4.mp3"
+            "content": "",
+            "goto": ""
           }
         }
       },
@@ -93,7 +100,8 @@
             "downloadable": true,
             "viewable": true,
             "playable": true,
-            "content": "This is a dummy content for dontwatch.mp4"
+            "content": "",
+            "goto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
           }
         }
       }

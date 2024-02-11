@@ -62,86 +62,8 @@ function downloadFile(fileName) {
   document.body.removeChild(a);
 }
 
-const commands = {
-  'ls': () => {
-      return Object.keys(currentDirectory).map(item => {
-          if (currentDirectory[item].type === 'directory') {
-              return `<span class="folder">${item}/</span>`;
-          } else {
-              return item;
-          }
-      }).join('</br>');
-  },
-  'cd': (directory) => {
-    if (directory === "..") {
-      if (currentPath !== "/") {
-        let newPath = currentPath.endsWith("/") ? currentPath.slice(0, -1) : currentPath;
-        currentPath = newPath.substring(0, newPath.lastIndexOf("/")) || "/";
-        let pathSegments = currentPath === "/" ? [""] : currentPath.split('/');
-        currentDirectory = pathSegments.reduce((acc, cur) => {
-          return cur === "" ? fileSystem["/"] : acc[cur]['children'];
-        }, fileSystem);
-        return "";
-      }
-      return "Already at root directory";
-    } else if (currentDirectory[directory] && currentDirectory[directory].type === "directory") {
-      currentPath = currentPath === "/" ? `/${directory}` : `${currentPath}/${directory}`;
-      currentDirectory = currentDirectory[directory].children;
-      return "";
-    } else {
-      return `cd: ${directory}: No such file or directory`;
-    }
-  },
-  'clear': () => {
-    document.getElementById('terminal').innerHTML = '';
-    return '';
-  },
-  'whoami': () => "user",
-  'help': () => "Available commands: ls, cd, clear, whoami, help, reboot, shutdown, exit, history, ifconfig, ip addr, echo, cat, scp, su, sudo.",
-  'su': () => "Cannot switch users.",
-  'sudo': (command) => `Executed '${command}' as root`,
-  'pwd': () => currentPath,
-  'reboot': () => {
-      const terminal = document.getElementById('terminal');
-      terminal.innerHTML = "<div>Rebooting system...</div>";
-
-      setTimeout(() => {
-          terminal.innerHTML += "<div>Mounting /dev/sda...</div>";
-      }, 1000);
-
-      setTimeout(() => {
-          terminal.innerHTML += "<div>Reading file structure...</div>";
-      }, 4000);
-
-      setTimeout(() => {
-          terminal.innerHTML += "<div>Checking ECC RAM...</div>";
-      }, 3000);
-
-      // Add additional pre-boot operations here with increasing timeouts
-      setTimeout(() => {
-          terminal.innerHTML += "<div>Initializing network interfaces...</div>";
-      }, 6000);
-
-      setTimeout(() => {
-          terminal.innerHTML += "<div>Starting system services...</div>";
-      }, 9000);
-
-      setTimeout(() => {
-          terminal.innerHTML = "<div>Booting up...</div>"; // Clear previous messages and show booting up message
-      }, 12000);
-
-      setTimeout(() => {
-          // Finally, display the MOTD after the boot sequence is complete
-          displayMotd();
-      }, 16000);
-      return '';
-  },
-  'shutdown': () => "Shutting down...",
-  'exit': () => "Connection to localhost closed...",
-  'history': () => commandHistory.map((cmd, index) => `${index + 1} ${cmd}`).join('</br>'),
-  'ifconfig': () => "inet 127.0.0.1 netmask 255.0.0.0",
-  'ip_addr': () => "inet 127.0.0.1/8 scope host lo",
-  'echo': (...args) => args.join(' '),
+const commands =
+{
   'cat': (fileName) => {
     if (currentDirectory[fileName] && currentDirectory[fileName].type === "file") {
       return currentDirectory[fileName].content;
@@ -149,44 +71,182 @@ const commands = {
       return `cat: ${fileName}: No such file or directory`;
     }
   },
+  'cd': (directory) => {
+    if (directory === "..") {
+      if (currentPath !== "/") {
+        // Handle moving up in the directory structure
+        let newPath = currentPath.endsWith("/") ? currentPath.slice(0, -1) : currentPath;
+        newPath = newPath.substring(0, newPath.lastIndexOf("/")) || "/";
+        let pathSegments = newPath === "/" ? [""] : newPath.split('/');
+
+        // Reset currentDirectory based on newPath
+        currentDirectory = pathSegments.reduce((acc, cur) => {
+          return cur === "" ? fileSystem["/"] : acc[cur].children;
+        }, fileSystem);
+
+        // Update currentPath to reflect the new path
+        currentPath = newPath;
+      } else {
+        return "Already at root directory";
+      }
+    } else {
+      // Navigate down into a specified directory
+      if (currentDirectory.children && currentDirectory.children[directory] && currentDirectory.children[directory].type === "directory") {
+        // Update currentPath to include the new directory
+        currentPath = currentPath.endsWith("/") ? `${currentPath}${directory}` : `${currentPath}/${directory}`;
+
+        // Update currentDirectory to point to the new directory
+        currentDirectory = currentDirectory.children[directory];
+      } else {
+        return `cd: ${directory}: No such file or directory`;
+      }
+    }
+    return "";
+  },
+  'clear': () => {
+    document.getElementById('terminal').innerHTML = '';
+    return '';
+  },
+  'echo': (...args) => args.join(' '),
+  'exit': () => "Connection to localhost closed...",
+  'help': () => {
+    return "Available commands:<br>" +
+      "cat - Display the content of a file.<br>" +
+      "cd - Change the current directory.<br>" +
+      "clear - Clear the terminal screen.<br>" +
+      "echo - Display a line of text.<br>" +
+      "exit - Exit the terminal.<br>" +
+      "help - Display available commands.<br>" +
+      "history - Show command history.<br>" +
+      "ifconfig - Display network configuration.<br>" +
+      "ip_addr - Display IP address information.<br>" +
+      "ll - List directory contents with detailed information.<br>" +
+      "ls - List directory contents.<br>" +
+      "play - Plays an audio/video file.<br>" +
+      "pwd - Print working directory.<br>" +
+      "reboot - Simulate a system reboot.<br>" +
+      "scp - Download a file if that file is available for download.<br>" +
+      "shutdown - Simulate system shutdown.<br>" +
+      "su - Switch user (not implemented).<br>" +
+      "sudo - Execute a command as the superuser (not implemented).<br>" +
+      "view - View an image file in a new tab.<br>" +
+      "whoami - Display the current user.";
+  },
+  'history': () => commandHistory.map((cmd, index) => `${index + 1} ${cmd}`).join('</br>'),
+  'ifconfig': () => "inet 127.0.0.1 netmask 255.0.0.0",
+  'ip_addr': () => "inet 127.0.0.1/8 scope host lo",
+  'll': () => {
+    const directoryContents = currentDirectory.children || currentDirectory;
+    return Object.keys(directoryContents).map(item => {
+      const itemDetails = directoryContents[item];
+      const type = itemDetails.type === 'directory' ? 'd' : '-';
+      const permissions = itemDetails.permissions ? itemDetails.permissions.replace(/(.)(.)(.)/, '$1$2$2$3$3$3') : '---';
+      const owner = itemDetails.owner || 'unknown';
+      const size = "4096";
+      // Adjust date as needed or implement logic to show actual date
+      return `${type}${permissions} 1 ${owner} ${owner} ${size} Feb 10 20:40 ${item}`;
+    }).join('<br>'); // Use '<br>' for HTML line breaks
+  },
+  'ls': () => {
+    // Check if the currentDirectory has a 'children' property to list from
+    const directoryContents = currentDirectory.children || currentDirectory;
+    return Object.keys(directoryContents).map(item => {
+        // Determine if the item is a directory or file for display
+        const itemType = directoryContents[item].type === 'directory' ? `<span class="folder">${item}/</span>` : item;
+        return itemType;
+    }).join('</br>');
+  },
+  'play': (fileName) => {
+    // Attempt to access the file within the current directory
+    const file = currentDirectory.children && currentDirectory.children[fileName];
+
+    // Check if the file exists, is marked as playable, and has a 'goto' link
+    if (file && file.playable) {
+      // Determine the URL to navigate to: use the 'goto' link if available, otherwise default to the downloads folder
+      const url = file.goto ? file.goto : `os/downloads/${fileName}`;
+
+      // Open the URL in a new tab
+      window.open(url, '_blank');
+      return `Playing ${fileName}...`;
+    } else {
+      // Return an error if the file does not exist or is not playable
+      return `Error: ${fileName} is not playable or does not exist.`;
+    }
+  },
+  'pwd': () => currentPath,
+
+  'reboot': () => {
+    const terminal = document.getElementById('terminal');
+    terminal.innerHTML = "<div>Rebooting system...</div>";
+
+    setTimeout(() => {
+      terminal.innerHTML += "<div>Mounting /dev/sda...</div>";
+    }, 1000);
+
+    setTimeout(() => {
+      terminal.innerHTML += "<div>Reading file structure...</div>";
+    }, 2000);
+
+    setTimeout(() => {
+      terminal.innerHTML += "<div>Checking ECC RAM...</div>";
+    }, 3000);
+
+    setTimeout(() => {
+      terminal.innerHTML += "<div>Initializing network interfaces...</div>";
+    }, 4000);
+
+    setTimeout(() => {
+      terminal.innerHTML += "<div>Starting system services...</div>";
+    }, 5000);
+
+    setTimeout(() => {
+      terminal.innerHTML = "<div>Booting up...</div>"; // Clear previous messages and show booting up message
+    }, 6000);
+
+    setTimeout(() => {
+      // Finally, display the MOTD after the boot sequence is complete
+      displayMotd();
+    }, 11000);
+    return '';
+  },
   'scp': (fileName) => {
-    if (currentDirectory[fileName] && currentDirectory[fileName].type === "file" && currentDirectory[fileName].downloadable) {
-      downloadFile(fileName);
-      return `Downloading ${fileName}...`;
+    const file = currentDirectory.children && currentDirectory.children[fileName];
+    if (file && file.type === "file" && file.downloadable) {
+      // Check if a goto URL is provided and not empty, otherwise default to the downloads directory
+      const url = file.goto && file.goto !== "" ? file.goto : `os/downloads/${fileName}`;
+  
+      // Adjusted to potentially open a provided URL in a new tab or proceed with the download
+      // This step assumes you have a mechanism to handle direct downloads or URL navigation
+      if (file.goto && file.goto !== "") {
+        window.open(url, '_blank'); // Open the 'goto' URL in a new tab if specified
+        return `Accessing ${fileName}...`; // Adjust message accordingly
+      } else {
+        downloadFile(fileName); // Proceed with downloading the file
+        return `Downloading ${fileName}...`;
+      }
     } else {
       return `scp: ${fileName}: No such file or directory or not downloadable.`;
     }
-  },
+  },  
+  'shutdown': () => "Shutting down...",
+  'su': () => "Cannot switch users.",
+  'sudo': (command) => `Executed '${command}' as root`,
   'view': (fileName) => {
-    // Ensure the file exists and is a file
-    if (currentDirectory[fileName] && currentDirectory[fileName].type === "file") {
-      // Check if the file is viewable
-      if (currentDirectory[fileName].viewable) {
-        const url = `os/downloads/${fileName}`;
-        // Open the viewable file URL in a new tab
-        window.open(url, '_blank');
-        return `Viewing ${fileName}...`;
-      } else {
-        return `Error: ${fileName} is not viewable.`;
-      }
+    // Attempt to access the file within the current directory
+    const file = currentDirectory.children && currentDirectory.children[fileName];
+
+    // Check if the file exists, is marked as viewable, and has a 'goto' link or needs to default to the downloads folder
+    if (file && file.viewable) {
+      // Determine the URL to navigate to: use the 'goto' link if available and not empty, otherwise default to the downloads folder
+      const url = file.goto && file.goto !== "" ? file.goto : `os/downloads/${fileName}`;
+
+      // Open the URL in a new tab
+      window.open(url, '_blank');
+      return `Viewing ${fileName}...`;
     } else {
-      return `view: ${fileName}: No such file or directory`;
+      // Return an error if the file does not exist or is not viewable
+      return `Error: ${fileName} is not viewable or does not exist.`;
     }
   },
-  'play': (fileName) => {
-    // Ensure the file exists and is a file
-    if (currentDirectory[fileName] && currentDirectory[fileName].type === "file") {
-      // Check if the file is playable
-      if (currentDirectory[fileName].playable) {
-        const url = `os/downloads/${fileName}`;
-        // Open the playable file URL in a new tab for playing
-        window.open(url, '_blank');
-        return `Playing ${fileName}...`;
-      } else {
-        return `Error: ${fileName} is not playable.`;
-      }
-    } else {
-      return `play: ${fileName}: No such file or directory`;
-    }
-  },
+  'whoami': () => "user",
 };
