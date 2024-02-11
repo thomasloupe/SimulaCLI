@@ -1,6 +1,5 @@
 // commands.js
 // Simulated file system structure
-console.log('commands.js loaded');
 
 import { displayMotd } from './terminal.js';
 // Initialize an empty object for the file system and declare currentDirectory and currentPath
