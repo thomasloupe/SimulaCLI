@@ -198,7 +198,7 @@ const commands =
     } else {
       return `scp: ${fileName}: No such file or directory or not downloadable.`;
     }
-  },  
+  },
   'shutdown': () => "Shutting down...",
   'su': () => "Cannot switch users.",
   'sudo': (command) => `Executed '${command}' as root`,

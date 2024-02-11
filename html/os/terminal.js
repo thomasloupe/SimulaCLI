@@ -1,3 +1,5 @@
+// terminal.js
+
 console.log('terminal.js loaded');
 
 const terminal = document.getElementById('terminal');
