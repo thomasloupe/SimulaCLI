@@ -23,7 +23,7 @@ Below is a list of supported commands in SimulaCLI:
 - `help`: Display available commands.
 - `history`: Show command history.
 - `ifconfig`: Display network configuration.
-- `ip_addr`: Display IP address information.
+- `ip addr`: Display IP address information.
 - `ll`: List directory contents with detailed information.
 - `ls`: List directory contents.
 - `play`: Plays an audio/video file.
