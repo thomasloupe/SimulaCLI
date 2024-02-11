@@ -162,7 +162,19 @@ Here's an example hard drive setup in JSON format:
 }
 ```
 
-Tips: 
-Be sure any file you add has an extension, just as it would in a real Linux terminal. Likewise, ensure any files being downloaded, played, or viewed, match the full filename and extension of the files in your hard drive.
+### Tips:
 
-Any file can have text content. If you want to emulate a real terminal, set the `content` value for files that typically cannot be concatenated to an empty string. Otherwise, you can use `content` to provide a description of the file when concatenated, without having viewed or played it first.
+1. **File Extensions**: 
+   - Ensure any file you add has an extension, just as it would in a real Linux terminal. 
+   - This ensures consistency and compatibility with typical file handling.
+
+2. **Matching Filenames**: 
+   - Likewise, ensure any files being downloaded, played, or viewed, match the full filename and extension of the files in your hard drive. 
+   - This ensures accurate referencing and avoids errors.
+
+3. **Text Content**: 
+   - Any file can have text content. 
+   - If you want to emulate a real terminal, set the `content` value for files that typically cannot be concatenated to an empty string. 
+   - Otherwise, you can use `content` to provide a description of the file when concatenated, without having viewed or played it first. 
+   - This allows for enhanced user experience and informative file interactions.
+   
