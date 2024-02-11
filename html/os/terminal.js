@@ -9,7 +9,7 @@ const returnSound = document.getElementById('returnSound');
 
 let backgroundAudioPlayed = false; // Flag to indicate if the background audio has been played
 
-async function displayMotd() {
+export async function displayMotd() {
     try {
         const response = await fetch('os/etc/motd');
         if (!response.ok) {

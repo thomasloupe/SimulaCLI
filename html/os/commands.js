@@ -2,8 +2,12 @@
 // Simulated file system structure
 console.log('commands.js loaded');
 
-// Initialize an empty object for the file system
+import { displayMotd } from './terminal.js';
+// Initialize an empty object for the file system and declare currentDirectory and currentPath
 let fileSystem = {};
+let currentDirectory = {}; // Initialize as an empty object or appropriate default
+let currentPath = "/";
+let commandHistory = [];
 
 async function loadFileSystem() {
   try {
@@ -13,9 +17,8 @@ async function loadFileSystem() {
     }
     fileSystem = await response.json();
     console.log('File system loaded', fileSystem);
-    // Initialize currentDirectory after the file system is loaded
-    currentDirectory = fileSystem["/"];
-    currentPath = "/";
+    // Correctly initialize currentDirectory after the file system is loaded
+    currentDirectory = fileSystem["/"]; // This should now work without error
   } catch (error) {
     console.error('Could not load file system:', error);
   }
@@ -24,14 +27,26 @@ async function loadFileSystem() {
 // Call loadFileSystem at the start
 loadFileSystem();
 
-let commandHistory = [];
-
 window.executeCommand = function(input) {
     commandHistory.push(input); // Add command to history
 
-    const args = input.split(' ');
-    const command = args.shift();
+    // List of multi-word commands
+    const multiWordCommands = ["ip addr"];
+    let command, args;
 
+    // Check if the input starts with any multi-word command
+    const matchedCommand = multiWordCommands.find(c => input.startsWith(c));
+
+    if (matchedCommand) {
+        // If input matches a multi-word command, split accordingly
+        command = matchedCommand.replace(' ', '_'); // Replace space with underscore for internal mapping
+        args = input.substring(matchedCommand.length).trim().split(' ');
+    } else {
+        // Fallback for single-word commands
+        [command, ...args] = input.split(' ');
+    }
+
+    // Lookup and execute the command, or return 'command not found'
     const response = commands[command] ? commands[command](...args) : `${input}: command not found`;
     console.log(`Command input: ${input}`, `Response: ${response}`);
     return response;
@@ -86,12 +101,46 @@ const commands = {
   'su': () => "Cannot switch users.",
   'sudo': (command) => `Executed '${command}' as root`,
   'pwd': () => currentPath,
-  'reboot': () => "Rebooting system...",
+  'reboot': () => {
+      const terminal = document.getElementById('terminal');
+      terminal.innerHTML = "<div>Rebooting system...</div>";
+
+      setTimeout(() => {
+          terminal.innerHTML += "<div>Mounting /dev/sda...</div>";
+      }, 1000);
+
+      setTimeout(() => {
+          terminal.innerHTML += "<div>Reading file structure...</div>";
+      }, 4000);
+
+      setTimeout(() => {
+          terminal.innerHTML += "<div>Checking ECC RAM...</div>";
+      }, 3000);
+
+      // Add additional pre-boot operations here with increasing timeouts
+      setTimeout(() => {
+          terminal.innerHTML += "<div>Initializing network interfaces...</div>";
+      }, 6000);
+
+      setTimeout(() => {
+          terminal.innerHTML += "<div>Starting system services...</div>";
+      }, 9000);
+
+      setTimeout(() => {
+          terminal.innerHTML = "<div>Booting up...</div>"; // Clear previous messages and show booting up message
+      }, 12000);
+
+      setTimeout(() => {
+          // Finally, display the MOTD after the boot sequence is complete
+          displayMotd();
+      }, 16000);
+      return '';
+  },
   'shutdown': () => "Shutting down...",
   'exit': () => "Connection to localhost closed...",
   'history': () => commandHistory.map((cmd, index) => `${index + 1} ${cmd}`).join('</br>'),
   'ifconfig': () => "inet 127.0.0.1 netmask 255.0.0.0",
-  'ip addr': () => "inet 127.0.0.1/8 scope host lo",
+  'ip_addr': () => "inet 127.0.0.1/8 scope host lo",
   'echo': (...args) => args.join(' '),
   'cat': (fileName) => {
     if (currentDirectory[fileName] && currentDirectory[fileName].type === "file") {
