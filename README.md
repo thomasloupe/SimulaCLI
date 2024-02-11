@@ -16,6 +16,7 @@ Below is a list of supported commands in SimulaCLI:
 
 - `cat`: Display the content of a file.
 - `cd`: Change the current directory.
+- `cd ..`: Change to the previous directory.
 - `clear`: Clear the terminal screen.
 - `echo`: Display a line of text.
 - `exit`: Exit the terminal.
