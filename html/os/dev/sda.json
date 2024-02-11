@@ -123,6 +123,18 @@
         "content": "SimulaCLI - https://github.com/thomasloupe/simulacli<br>Learn more about this project, and all of my work at https://thomasloupe.com!",
         "goto": "",
         "size": "135"
+      },
+      "dontreadme.txt": {
+        "type": "file",
+        "owner": "root",
+        "permissions": "rwx",
+        "downloadable": false,
+        "viewable": true,
+        "playable": false,
+        "content": "",
+        "goto": "https://www.juhsd.net/cms/lib/CA01902464/Centricity/Domain/256/2016_The%20Veldt.pdf",
+        "size": "88",
+        "superuser": "true"
       }
     }
   }

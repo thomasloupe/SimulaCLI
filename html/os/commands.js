@@ -1,6 +1,8 @@
 // commands.js
 
 import { displayMotd } from './terminal.js';
+import { promptForSuperuserPassword } from './superuser.js';
+
 let fileSystem = {};
 let currentDirectory = {};
 let currentPath = "/";
@@ -21,24 +23,51 @@ async function loadFileSystem() {
 
 loadFileSystem();
 
-window.executeCommand = function(input) {
-    commandHistory.push(input);
+window.executeCommand = async function(input) {
+  commandHistory.push(input);
 
-    const multiWordCommands = ["ip addr"];
-    let command, args;
+  const [command, ...args] = input.split(' ');
+  // Assume the first argument is the target name for simplicity; adjust as needed
+  const targetName = args[0];
 
-    const matchedCommand = multiWordCommands.find(c => input.startsWith(c));
+  // Function to recursively find the target object based on the path or name
+  async function findTargetObject(currentDirectory, targetName) {
+      if (!targetName || targetName === '.' || targetName === '/') return currentDirectory;
+      const pathParts = targetName.split('/');
+      let target = currentDirectory;
 
-    if (matchedCommand) {
-        command = matchedCommand.replace(' ', '_');
-        args = input.substring(matchedCommand.length).trim().split(' ');
-    } else {
-        [command, ...args] = input.split(' ');
-    }
+      for (let part of pathParts) {
+          if (part === '..') {
+              // Move up in the directory structure
+              // This is a simplification and might need adjustment based on your actual directory tracking
+              continue;
+          } else if (target.children && target.children[part]) {
+              target = target.children[part];
+          } else {
+              // Target not found
+              return null;
+          }
+      }
 
-    const response = commands[command] ? commands[command](...args) : `${input}: command not found`;
-    console.log(`Command input: ${input}`, `Response: ${response}`);
-    return response;
+      return target;
+  }
+
+  // Determine if the target requires superuser access
+  const targetObject = await findTargetObject(currentDirectory, targetName);
+  const requiresSuperuser = targetObject && targetObject.superuser;
+
+  if (requiresSuperuser && !isAuthenticatedAsRoot) {
+      const isAuthenticated = await promptForSuperuserPassword();
+      if (!isAuthenticated) {
+          console.log("su: Authentication failure");
+          return "su: Authentication failure";
+      }
+  }
+
+  // Execute the command if no superuser authentication is required or if authentication is successful
+  const response = commands[command] ? await commands[command](...args) : `${input}: command not found`;
+  console.log(`Command input: ${input}`, `Response: ${response}`);
+  return response;
 };
 
 function downloadFile(fileName) {
@@ -111,8 +140,6 @@ const commands =
       "reboot - Simulate a system reboot.<br>" +
       "scp - Download a file if that file is available for download.<br>" +
       "shutdown - Simulate system shutdown.<br>" +
-      "su - Switch user (not implemented).<br>" +
-      "sudo - Execute a command as the superuser (not implemented).<br>" +
       "view - View an image file in a new tab.<br>" +
       "whoami - Display the current user.";
   },
@@ -201,8 +228,6 @@ const commands =
     }
   },
   'shutdown': () => "Shutting down...",
-  'su': () => "Cannot switch users.",
-  'sudo': (command) => `Executed '${command}' as root`,
   'view': (fileName) => {
     const file = currentDirectory.children && currentDirectory.children[fileName];
 
