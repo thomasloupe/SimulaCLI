@@ -36,20 +36,17 @@ function playReturnSound() {
 
 function stopAllSound() {
     backgroundAudio.pause();
-    backgroundAudio.currentTime = 0;
     nextAudio.pause();
-    nextAudio.currentTime = 0;
     returnSound.pause();
+    backgroundAudio.currentTime = 0;
+    nextAudio.currentTime = 0;
     returnSound.currentTime = 0;
 }
 
-async function playShutdownSound() {
-    try {
-        await shutdownSound.play();
-        shutdownSound.onended = () => window.location.reload();
-    } catch (error) {
-        console.error('Shutdown sound play failed:', error);
-    }
+function playShutdownSound() {
+    shutdownSound.currentTime = 0;
+    shutdownSound.play().catch(error => console.error('Shutdown sound play failed:', error));
+    shutdownSound.onended = () => window.location.reload();
 }
 
 let isPasswordInputMode = false;
