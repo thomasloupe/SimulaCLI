@@ -5,18 +5,18 @@ function simpleHash(input) {
   for (let i = 0; i < input.length; i++) {
       const char = input.charCodeAt(i);
       hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32bit integer
+      hash = hash & hash;
   }
-  return hash >>> 0; // Convert to an unsigned 32-bit integer
+  return hash >>> 0;
 }
 
 export let isAuthenticatedAsRoot = false;
 
 export async function verifyRootPassword(inputPassword) {
-  const superuserPasswordHash = "853e0f48"; // Expected hash for "hacktheplanet"
+  const superuserPasswordHash = "853e0f48";
   const enteredPasswordHash = simpleHash(inputPassword).toString(16);
 
-  console.log("Computed hash of input:", enteredPasswordHash); // Debugging line
+  console.log("Computed hash of input:", enteredPasswordHash);
 
   if (enteredPasswordHash === superuserPasswordHash) {
       isAuthenticatedAsRoot = true;
