@@ -1,54 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Root Password Hash Generator</title>
+    <title>SimulaCLI</title>
     <style>
-        body {
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+        #terminal {
             background-color: #000;
             color: #0f0;
-            font-family: 'Courier New', Courier, monospace;
-            margin: 0;
-            padding: 20px;
+            height: calc(100% - 22px);
+            width: 100%;
+            overflow-y: auto;
+            padding: 10px;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        input {
+            width: 100%;
+            color: #0f0;
+            background-color: #3f3f3f;
+            border: none;
+            padding: 10px;
+            font-size: 16px;
+            caret-color: #0f0;
             box-sizing: border-box;
         }
-        input, button {
-            color: #0f0;
-            background-color: #000;
-            border: 1px solid #0f0;
+        input:focus {
+            outline-color: forestgreen;
         }
-        button {
-            padding: 5px 15px;
-            cursor: pointer;
+        .folder {
+            color: #F80;
         }
-        #hashOutput {
-            margin-top: 10px;
-        }
-    </style>
+    </style>    
 </head>
 <body>
-    <h2>Root Password Hash Generator</h2>
-    <p>Enter a new password in the field below and click "Generate Hash" to create a new hash value for root authentication. Copy the generated hash and replace the `superuserPasswordHash` value in the `superuser.js` file with the new hash to update the password.</p>
-    
-    <input type="text" id="passwordInput" placeholder="Enter new password">
-    <button onclick="generateHash()">Generate Hash</button>
-    <div id="hashOutput"></div>
 
-    <script>
-        function simpleHash(input) {
-            let hash = 0;
-            for (let i = 0; i < input.length; i++) {
-                const char = input.charCodeAt(i);
-                hash = (hash << 5) - hash + char;
-            }
-            return hash >>> 0;
-        }
+    <div id="terminal"></div>
+    <input type="text" id="commandInput" placeholder="Type commands here...">
 
-        function generateHash() {
-            const password = document.getElementById('passwordInput').value;
-            const hash = simpleHash(password).toString(16);
-            document.getElementById('hashOutput').innerText = `Generated hash: ${hash}`;
-        }
-    </script>
+    <audio id="backgroundAudio" preload="auto">
+        <source src="os/sfx/terminal.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="nextAudio" loop preload="auto">
+        <source src="os/sfx/terminal1.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="returnSound" preload="auto">
+        <source src="os/sfx/return.mp3" type="audio/mpeg">
+    </audio>
+
+    <script type="module" src="os/superuser.js"></script>
+    <script type="module" src="os/commands.js"></script>
+    <script type="module" src="os/terminal.js"></script>
+
 </body>
 </html>

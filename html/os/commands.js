@@ -117,7 +117,7 @@ const commands = {
   'echo': async (...args) => args.join(' '),
   'exit': async () => {
     window.location.reload();
-    return "Connection to localhost closed...";
+    return '';
   },
   'help': async () => {
     return "Available commands:<br>" +

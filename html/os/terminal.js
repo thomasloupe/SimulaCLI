@@ -10,6 +10,7 @@ const commandInput = document.getElementById('commandInput');
 const backgroundAudio = document.getElementById('backgroundAudio');
 const nextAudio = document.getElementById('nextAudio');
 const returnSound = document.getElementById('returnSound');
+const shutdownSound = document.getElementById('shutdownSound');
 
 let backgroundAudioPlayed = false;
 let isExpectingRootPassword = false;
@@ -31,6 +32,14 @@ export async function displayMotd() {
 function playReturnSound() {
     returnSound.currentTime = 0;
     returnSound.play().catch(error => console.log('Return sound play failed:', error));
+}
+
+export async function shutdownSound() {
+    try{
+        shutdownSound.play().catch(error => console.log('Shutdown sound play failed:', error));
+    } catch (error) {
+        console.error('Could not play shutdown sound:', error);
+    }
 }
 
 let isPasswordInputMode = false;
