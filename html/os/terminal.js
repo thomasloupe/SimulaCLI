@@ -34,12 +34,19 @@ function playReturnSound() {
     returnSound.play().catch(error => console.log('Return sound play failed:', error));
 }
 
-export async function shutdownSound() {
-    try{
-        shutdownSound.play().catch(error => console.log('Shutdown sound play failed:', error));
-    } catch (error) {
-        console.error('Could not play shutdown sound:', error);
-    }
+function stopAllSound() {
+    backgroundAudio.pause();
+    backgroundAudio.currentTime = 0;
+    nextAudio.pause();
+    nextAudio.currentTime = 0;
+    returnSound.pause();
+    returnSound.currentTime = 0;
+}
+
+// Adjusted shutdownSound function
+function playShutdownSound() {
+    shutdownSound.currentTime = 0;
+    shutdownSound.play().catch(error => console.log('Shutdown sound play failed:', error));
 }
 
 let isPasswordInputMode = false;
@@ -93,4 +100,12 @@ document.addEventListener('click', function handleInitialAudioPlay() {
     if (backgroundAudio.paused && !backgroundAudioPlayed) {
         backgroundAudio.play().catch(error => console.log('Audio play failed:', error));
     }
+});
+
+window.addEventListener('exitCommandTriggered', () => {
+    stopAllSound();
+    playShutdownSound();
+    shutdownSound.onended = () => {
+        window.location.reload();
+    };
 });

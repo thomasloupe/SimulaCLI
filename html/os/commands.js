@@ -116,7 +116,7 @@ const commands = {
   },
   'echo': async (...args) => args.join(' '),
   'exit': async () => {
-    window.location.reload();
+    window.dispatchEvent(new CustomEvent('exitCommandTriggered'));
     return '';
   },
   'help': async () => {
@@ -221,7 +221,10 @@ const commands = {
       return `scp: ${fileName}: No such file or directory or not downloadable.`;
     }
   },
-  'shutdown': async () => "Shutting down...",
+  'shutdown': async () => {
+    window.dispatchEvent(new CustomEvent('exitCommandTriggered'));
+    return '';
+  },
   'view': async (fileName) => {
     const file = currentDirectory.children && currentDirectory.children[fileName];
     if (file && file.viewable) {
