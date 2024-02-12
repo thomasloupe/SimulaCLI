@@ -115,7 +115,10 @@ const commands = {
     return '';
   },
   'echo': async (...args) => args.join(' '),
-  'exit': async () => "Connection to localhost closed...",
+  'exit': async () => {
+    window.location.reload();
+    return "Connection to localhost closed...";
+  },
   'help': async () => {
     return "Available commands:<br>" +
       "cat - Display the content of a file.<br>" +
