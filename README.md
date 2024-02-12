@@ -46,7 +46,7 @@ Follow these guidelines to set up your own hard drive:
 
 1. **Permissions and Owner**: Every directory and file must have a `permissions` and `owner` value set.
 2. **File Attributes**: Files can have attributes such as `downloadable`, `viewable`, `playable`, `content`, `goto`, and `superuser`.
-3. **Root Authentication**: Files and directories that have the `superuser` attribute set to `true` will be lightly guarded by your root password.
+3. **Root Authentication**: Files and directories that have the `superuser` attribute set to `true` will be lightly guarded by your root password. Users will have to login with the root password in order to perform any actions on that file. Once a user successfully "authenticates", they will stay authenticated until the page is refreshed. Note that the `exit` and `reboot` commands refresh the page after executed as well.
 
 ## Example Hard Drive Setup
 
