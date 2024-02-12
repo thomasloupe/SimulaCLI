@@ -1,13 +1,12 @@
 // commands.js
 
 import { displayMotd } from './terminal.js';
-import { promptForSuperuserPassword } from './superuser.js';
+import { isAuthenticatedAsRoot } from './superuser.js';
 
 let fileSystem = {};
 let currentDirectory = {};
 let currentPath = "/";
 let commandHistory = [];
-let isAuthenticatedAsRoot = false;
 
 async function loadFileSystem() {
   try {
@@ -24,48 +23,35 @@ async function loadFileSystem() {
 
 loadFileSystem();
 
-window.executeCommand = async function(input) {
+export async function executeCommand(input) {
+  // Command execution logging and history tracking remains unchanged
   console.log('executeCommand attached to window:', 'executeCommand' in window);
   commandHistory.push(input);
   const [command, ...args] = input.split(' ');
 
-  // Handling for 'ls' and 'll' commands directly
-  if (command === 'ls' || command === 'll') {
-      try {
-          const response = await commands[command](...args);
-          if (response !== undefined) {
-              document.getElementById('terminal').innerHTML += `<div>${response}</div>`;
-          }
-      } catch (error) {
-          document.getElementById('terminal').innerHTML += `<div>Error executing ${command}: ${error.message}</div>`;
-      }
-      return; // Early return for these commands
-  }
-
-  // Handling for commands that may require superuser access
+  // Command handling logic...
   let targetPath = args[0] || "";
-  let target = await findTarget(targetPath, currentDirectory); // Ensure findTarget can handle async operations if necessary
+  let target = await findTarget(targetPath, currentDirectory);
 
-  // Check for superuser requirement
-  if (target && target.superuser && !isAuthenticatedAsRoot) {
-      const authenticated = await promptForSuperuserPassword();
-      if (!authenticated) {
-          document.getElementById('terminal').innerHTML += "<div>su: Authentication failure</div>";
-          return; // Stop execution if not authenticated
-      }
-  }
-
+  // The major change here is the removal of the inline authentication check
+  // Command execution logic...
   if (commands[command]) {
-      try {
-          const response = await commands[command](...args);
-          if (response !== undefined) {
-              document.getElementById('terminal').innerHTML += `<div>${response}</div>`;
-          }
-      } catch (error) {
-          document.getElementById('terminal').innerHTML += `<div>Error executing ${command}: ${error.message}</div>`;
+    try {
+      // If a command requires root and user is not authenticated, return an error message
+      if (target && target.superuser && !isAuthenticatedAsRoot) {
+        document.getElementById('terminal').innerHTML += "<div>su: Authentication required</div>";
+        return; // Stop execution if not authenticated
       }
+      // Execute command if authenticated or no authentication is required
+      const response = await commands[command](...args);
+      if (response !== undefined) {
+        document.getElementById('terminal').innerHTML += `<div>${response}</div>`;
+      }
+    } catch (error) {
+      document.getElementById('terminal').innerHTML += `<div>Error executing ${command}: ${error.message}</div>`;
+    }
   } else {
-      document.getElementById('terminal').innerHTML += `<div>${command}: command not found</div>`;
+    document.getElementById('terminal').innerHTML += `<div>${command}: command not found</div>`;
   }
 }
 

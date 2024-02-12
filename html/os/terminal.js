@@ -2,6 +2,9 @@
 
 console.log('terminal.js loaded');
 
+import { isAuthenticatedAsRoot, verifyRootPassword } from './superuser.js';
+import { executeCommand } from './commands.js';
+
 const terminal = document.getElementById('terminal');
 const commandInput = document.getElementById('commandInput');
 const backgroundAudio = document.getElementById('backgroundAudio');
@@ -9,6 +12,8 @@ const nextAudio = document.getElementById('nextAudio');
 const returnSound = document.getElementById('returnSound');
 
 let backgroundAudioPlayed = false;
+let isExpectingRootPassword = false; // New state variable to track root password input
+let commandBuffer = ""; // Buffer to hold the command requiring root access
 
 export async function displayMotd() {
     try {
@@ -28,23 +33,45 @@ function playReturnSound() {
     returnSound.play().catch(error => console.log('Return sound play failed:', error));
 }
 
+// Add a new state variable in terminal.js
+let isPasswordInputMode = false;
+
 commandInput.addEventListener('keydown', async function(event) {
     if (event.key === 'Enter') {
         playReturnSound();
-        const command = commandInput.value.trim();
-        console.log(`Executing command: ${command}`);
-        terminal.innerHTML += `<div>> ${command}</div>`;
+        const input = commandInput.value.trim();
+        commandInput.value = ''; // Clear input field immediately
 
-        console.log('Calling executeCommand with:', command);
-        executeCommand(command).then(response => {
-            if (response !== undefined) { // Only append if response is not undefined
-                terminal.innerHTML += `<div>${response}</div>`;
+        if (isPasswordInputMode) {
+            // Process the password - don't display it or the command
+            const passwordVerification = await verifyRootPassword(input);
+            if (passwordVerification) {
+                terminal.innerHTML += "<div>Root authentication successful.</div>";
+                isPasswordInputMode = false; // Reset the flag
+                // Now, execute the command that required authentication
+                await executeCommand(commandBuffer);
+                commandBuffer = ""; // Clear the command buffer after execution
+            } else {
+                terminal.innerHTML += "<div>su: Authentication failure</div>";
+                // Optionally, allow the user to try entering the password again
+                // or exit password input mode and clear commandBuffer
+                isPasswordInputMode = false; // Reset the flag for security
             }
-            commandInput.value = '';
-            terminal.scrollTop = terminal.scrollHeight;
-        }).catch(error => console.error('Command execution failed:', error));
+        } else {
+            // Normal command handling
+            if (input === "view dontreadme.txt" && !isAuthenticatedAsRoot) {
+                // This is just an example condition to enter password input mode
+                isPasswordInputMode = true;
+                commandBuffer = input; // Store the command for execution after authentication
+                terminal.innerHTML += "<div>Enter root password:</div>";
+            } else {
+                // Process as a normal command
+                await executeCommand(input);
+            }
+        }
     }
 });
+
 
 backgroundAudio.addEventListener('ended', function() {
     backgroundAudioPlayed = true;

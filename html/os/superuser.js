@@ -1,28 +1,27 @@
 // superuser.js
 
-async function sha256(text) {
-  const uint8 = new TextEncoder().encode(text);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', uint8);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
+function simpleHash(input) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+      const char = input.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash >>> 0; // Convert to an unsigned 32-bit integer
 }
 
-let isAuthenticatedAsRoot = false;
+export let isAuthenticatedAsRoot = false;
 
-export async function promptForSuperuserPassword() {
-  if (isAuthenticatedAsRoot) return true;
+export async function verifyRootPassword(inputPassword) {
+  const superuserPasswordHash = "853e0f48"; // Expected hash for "hacktheplanet"
+  const enteredPasswordHash = simpleHash(inputPassword).toString(16);
 
-  const passwordEntered = prompt("Enter root password:");
-  const enteredPasswordHash = await sha256(passwordEntered);
-  const superuserPasswordHash = "48f6018bc6898a5c9e61d549b174131c07ed70542ba1c326289b9cc35af22f84";
+  console.log("Computed hash of input:", enteredPasswordHash); // Debugging line
 
   if (enteredPasswordHash === superuserPasswordHash) {
-    isAuthenticatedAsRoot = true;
-    alert("Authentication successful");
-    return true;
+      isAuthenticatedAsRoot = true;
+      return true;
   } else {
-    alert("su: Authentication failure");
-    return false;
+      return false;
   }
 }
