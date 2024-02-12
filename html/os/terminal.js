@@ -43,10 +43,13 @@ function stopAllSound() {
     returnSound.currentTime = 0;
 }
 
-// Adjusted shutdownSound function
-function playShutdownSound() {
-    shutdownSound.currentTime = 0;
-    shutdownSound.play().catch(error => console.log('Shutdown sound play failed:', error));
+async function playShutdownSound() {
+    try {
+        await shutdownSound.play();
+        shutdownSound.onended = () => window.location.reload();
+    } catch (error) {
+        console.error('Shutdown sound play failed:', error);
+    }
 }
 
 let isPasswordInputMode = false;
