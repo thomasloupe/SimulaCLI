@@ -13,7 +13,7 @@ function simpleHash(input) {
 export let isAuthenticatedAsRoot = false;
 
 export async function verifyRootPassword(inputPassword) {
-  const superuserPasswordHash = "853e0f48";
+  const superuserPasswordHash = "853e0f48"; // Use setrootpassword.html to generate a new password hash
   const enteredPasswordHash = simpleHash(inputPassword).toString(16);
 
   console.log("Computed hash of input:", enteredPasswordHash);
