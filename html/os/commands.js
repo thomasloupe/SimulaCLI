@@ -24,25 +24,19 @@ async function loadFileSystem() {
 loadFileSystem();
 
 export async function executeCommand(input) {
-  // Command execution logging and history tracking remains unchanged
   console.log('executeCommand attached to window:', 'executeCommand' in window);
   commandHistory.push(input);
   const [command, ...args] = input.split(' ');
 
-  // Command handling logic...
   let targetPath = args[0] || "";
   let target = await findTarget(targetPath, currentDirectory);
 
-  // The major change here is the removal of the inline authentication check
-  // Command execution logic...
   if (commands[command]) {
     try {
-      // If a command requires root and user is not authenticated, return an error message
       if (target && target.superuser && !isAuthenticatedAsRoot) {
         document.getElementById('terminal').innerHTML += "<div>su: Authentication required</div>";
-        return; // Stop execution if not authenticated
+        return;
       }
-      // Execute command if authenticated or no authentication is required
       const response = await commands[command](...args);
       if (response !== undefined) {
         document.getElementById('terminal').innerHTML += `<div>${response}</div>`;
