@@ -12,8 +12,8 @@ const nextAudio = document.getElementById('nextAudio');
 const returnSound = document.getElementById('returnSound');
 
 let backgroundAudioPlayed = false;
-let isExpectingRootPassword = false; // New state variable to track root password input
-let commandBuffer = ""; // Buffer to hold the command requiring root access
+let isExpectingRootPassword = false;
+let commandBuffer = "";
 
 export async function displayMotd() {
     try {
@@ -33,39 +33,32 @@ function playReturnSound() {
     returnSound.play().catch(error => console.log('Return sound play failed:', error));
 }
 
-// Add a new state variable in terminal.js
 let isPasswordInputMode = false;
 
 commandInput.addEventListener('keydown', async function(event) {
     if (event.key === 'Enter') {
         playReturnSound();
         const input = commandInput.value.trim();
-        commandInput.value = ''; // Clear input field immediately
+        terminal.innerHTML += `<div>> ${input}</div>`;
+        commandInput.value = '';
 
         if (isPasswordInputMode) {
-            // Process the password - don't display it or the command
             const passwordVerification = await verifyRootPassword(input);
             if (passwordVerification) {
                 terminal.innerHTML += "<div>Root authentication successful.</div>";
-                isPasswordInputMode = false; // Reset the flag
-                // Now, execute the command that required authentication
+                isPasswordInputMode = false;
                 await executeCommand(commandBuffer);
-                commandBuffer = ""; // Clear the command buffer after execution
+                commandBuffer = "";
             } else {
                 terminal.innerHTML += "<div>su: Authentication failure</div>";
-                // Optionally, allow the user to try entering the password again
-                // or exit password input mode and clear commandBuffer
-                isPasswordInputMode = false; // Reset the flag for security
+                isPasswordInputMode = false;
             }
         } else {
-            // Normal command handling
             if (input === "view dontreadme.txt" && !isAuthenticatedAsRoot) {
-                // This is just an example condition to enter password input mode
                 isPasswordInputMode = true;
-                commandBuffer = input; // Store the command for execution after authentication
+                commandBuffer = input;
                 terminal.innerHTML += "<div>Enter root password:</div>";
             } else {
-                // Process as a normal command
                 await executeCommand(input);
             }
         }
