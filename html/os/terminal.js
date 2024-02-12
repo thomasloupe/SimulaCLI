@@ -35,13 +35,16 @@ function playReturnSound() {
 }
 
 function stopAllSound() {
-    backgroundAudio.pause();
-    nextAudio.pause();
-    returnSound.pause();
-    backgroundAudio.currentTime = 0;
-    nextAudio.currentTime = 0;
-    returnSound.currentTime = 0;
+    setTimeout(() => {
+        backgroundAudio.pause();
+        nextAudio.pause();
+        returnSound.pause();
+        backgroundAudio.currentTime = 0;
+        nextAudio.currentTime = 0;
+        returnSound.currentTime = 0;
+    }, 1000);
 }
+
 
 function playShutdownSound() {
     shutdownSound.currentTime = 0;
