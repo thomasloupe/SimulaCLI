@@ -45,7 +45,6 @@ function stopAllSound() {
     }, 1000);
 }
 
-
 function playShutdownSound() {
     shutdownSound.currentTime = 0;
     shutdownSound.play().catch(error => console.error('Shutdown sound play failed:', error));
