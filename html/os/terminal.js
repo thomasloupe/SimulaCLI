@@ -29,7 +29,9 @@ export async function displayMotd() {
 }
 
 function scrollToBottom() {
-    terminal.scrollTop = terminal.scrollHeight;
+    setTimeout(() => {
+        terminal.scrollTop = terminal.scrollHeight;
+    }, 100);
 }
 
 function playReturnSound() {
@@ -56,7 +58,6 @@ function playShutdownSound() {
 
 let isPasswordInputMode = false;
 
-// terminal.js
 commandInput.addEventListener('keydown', async function(event) {
     if (event.key === 'Enter') {
         playReturnSound();
