@@ -2,7 +2,7 @@
 
 console.log('terminal.js loaded');
 
-import { isAuthenticatedAsRoot, verifyRootPassword } from './superuser.js';
+import { isAuthenticatedAsRoot, isAuthenticationRequired, verifyRootPassword } from './superuser.js';
 import { executeCommand } from './commands.js';
 
 const terminal = document.getElementById('terminal');
@@ -13,8 +13,7 @@ const returnSound = document.getElementById('returnSound');
 const shutdownSound = document.getElementById('shutdownSound');
 
 let backgroundAudioPlayed = false;
-let isExpectingRootPassword = false;
-let commandBuffer = "";
+
 
 export async function displayMotd() {
     try {
@@ -27,6 +26,10 @@ export async function displayMotd() {
     } catch (error) {
         console.error('Could not load motd:', error);
     }
+}
+
+function scrollToBottom() {
+    terminal.scrollTop = terminal.scrollHeight;
 }
 
 function playReturnSound() {
@@ -53,36 +56,29 @@ function playShutdownSound() {
 
 let isPasswordInputMode = false;
 
+// terminal.js
 commandInput.addEventListener('keydown', async function(event) {
     if (event.key === 'Enter') {
         playReturnSound();
         const input = commandInput.value.trim();
         terminal.innerHTML += `<div>> ${input}</div>`;
+        scrollToBottom();
         commandInput.value = '';
 
-        if (isPasswordInputMode) {
-            const passwordVerification = await verifyRootPassword(input);
-            if (passwordVerification) {
-                terminal.innerHTML += "<div>Root authentication successful.</div>";
-                isPasswordInputMode = false;
-                await executeCommand(commandBuffer);
-                commandBuffer = "";
-            } else {
-                terminal.innerHTML += "<div>su: Authentication failure</div>";
-                isPasswordInputMode = false;
+        if (!isAuthenticatedAsRoot) {
+            await executeCommand(input);
+
+            if (isAuthenticationRequired && !isAuthenticatedAsRoot) {
+                isPasswordInputMode = true;
+                terminal.innerHTML += "<div>Enter root password:</div>";
+                scrollToBottom();
             }
         } else {
-            if (input === "view dontreadme.txt" && !isAuthenticatedAsRoot) {
-                isPasswordInputMode = true;
-                commandBuffer = input;
-                terminal.innerHTML += "<div>Enter root password:</div>";
-            } else {
-                await executeCommand(input);
-            }
+            await executeCommand(input);
+            scrollToBottom();
         }
     }
 });
-
 
 backgroundAudio.addEventListener('ended', function() {
     backgroundAudioPlayed = true;
