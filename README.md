@@ -211,5 +211,4 @@ Here's an example hard drive setup in JSON format:
    - Any file can have text content. 
    - If you want to emulate a real terminal, set the `content` value for files that typically cannot be concatenated to an empty string. 
    - Otherwise, you can use `content` to provide a description of the file when concatenated, without having viewed or played it first. 
-   - This allows for enhanced user experience and informative file interactions.
    
