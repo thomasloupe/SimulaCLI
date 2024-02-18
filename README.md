@@ -7,7 +7,7 @@ SimulaCLI is a customizable simulated Linux terminal created in JavaScript.
 
 ## Introduction
 
-SimulaCLI simulates a Linux terminal environment where you can interact with a simulated file system. You can navigate directories, view files, play audio/video files, execute typical linux commands, and more.
+SimulaCLI simulates a Linux terminal environment where you can interact with a simulated file system. You can navigate directories, view files, play audio/video files, execute typical linux commands, and more. The terminal runs entirely within the client's own browser.
 
 ## Getting Started
 
