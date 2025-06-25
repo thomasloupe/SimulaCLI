@@ -3,6 +3,12 @@
     "name": "cowsay",
     "description": "Generate ASCII art of a cow saying something",
     "version": "1.0.0",
-    "author": "Thomas Loupe"
+    "author": "SimulaCLI Community"
+  },
+  {
+    "name": "dice",
+    "description": "Roll dice with customizable sides and count, with crit highlighting",
+    "version": "1.0.0",
+    "author": "SimulaCLI Community"
   }
 ]

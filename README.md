@@ -259,6 +259,7 @@ All packages must follow this structure:
 
 ```javascript
 // PackageName - Description
+// Community package for SimulaCLI
 export default async function packagename(...args) {
   // Handle input validation
   if (args.length === 0) {
