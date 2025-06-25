@@ -1,0 +1,8 @@
+[
+  {
+    "name": "fortune",
+    "description": "Display random fortune cookie messages",
+    "version": "1.0.0",
+    "author": "Thomas Loupe"
+  }
+]

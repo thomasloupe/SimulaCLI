@@ -4,12 +4,12 @@
 const DEFAULT_REPOSITORIES = [
   {
     name: "official",
-    url: "https://raw.githubusercontent.com/thomasloupe/simulacli/main/simpacks/official/",
+    url: "https://raw.githubusercontent.com/thomasloupe/SimulaCLI/main/simpacks/official/",
     description: "Official SimulaCLI packages"
   },
   {
     name: "community",
-    url: "https://raw.githubusercontent.com/thomasloupe/simulacli/main/simpacks/community/",
+    url: "https://raw.githubusercontent.com/thomasloupe/SimulaCLI/main/simpacks/community/",
     description: "Community contributed packages"
   }
 ];
