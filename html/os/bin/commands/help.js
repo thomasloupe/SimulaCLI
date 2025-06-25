@@ -1,7 +1,10 @@
 import { commands } from '../../commands.js';
 
 export default async function help() {
-  const helpMessages = Object.keys(commands).map(command => {
+  // Sort commands alphabetically
+  const sortedCommands = Object.keys(commands).sort();
+
+  const helpMessages = sortedCommands.map(command => {
     if (commands[command].help) {
       return `${command} - ${commands[command].help}`;
     }
