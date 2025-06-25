@@ -65,6 +65,9 @@ apt remove fortune
 
 # Update package lists
 apt update
+
+# Debug apt package status
+apt debug
 ```
 
 **Important:** After installing or removing packages, you must run `reboot` to restart the terminal and load the changes.
@@ -72,7 +75,7 @@ apt update
 ### Package Categories
 
 #### Official Packages
-Official packages are maintained by the SimulaCLI team and provide core functionality:
+Official packages are maintained by SimulaCLI and provide core functionality:
 
 - `fortune` - Display random inspirational quotes
 - `calc` - Mathematical calculator
@@ -87,13 +90,7 @@ fortune
 ```
 
 #### Community Packages
-Community packages are contributed by users and offer creative, experimental features:
-
-- `dice` - Roll dice with customizable sides
-- `notes` - Complete note-taking system
-- `timer` - Countdown timer with alerts
-- `password` - Secure password generator
-- `ascii` - ASCII art text generator
+Community packages are contributed by users and offer creative, experimental features, or expand existing features:
 
 ```bash
 # Install community packages
@@ -127,16 +124,15 @@ apt repo reset
 
 ### Creating and Contributing Packages
 
-Want to create your own packages? Check out the [simpacks directory](./simpacks/) for:
-
-- Package development guidelines
-- Contribution instructions
-- Example packages
-- Code standards and best practices
-
-Packages are stored in the `simpacks` folder:
+Want to submit a Community Simpack? Packages are stored in the `simpacks` folder:
 - `simpacks/official/` - Official packages
 - `simpacks/community/` - Community contributions
+
+Outstanding community packages will be promoted to official packages if the contributing author of the community package and SimulaCLI see fit.
+To contribute your own community package, use the official or community packages already provided as a starting point, then create a PR with:
+- Your package as `packageNameHere.js`.
+- An update to `packages.json` including your package.
+
 
 ## Setting Up Your Own Volume
 
@@ -242,18 +238,9 @@ The easier way is to create packages that can be installed via the `apt` system:
 
 1. **Fork this repository**
 2. **Create your package** in `simpacks/community/yourcommand.js`
-3. **Follow the package format:**
-
-```javascript
-export default async function yourcommand(...args) {
-  // Your command logic here
-  return "Command output";
-}
-
-yourcommand.help = "Description of your command";
-```
-
-4. **Submit a pull request** to contribute your package to the community
+3. **Update packages.json** in `simpacks/community/packages.json`
+4. **Follow the package format as shown below**
+5. **Submit a pull request** to contribute your package to the community
 
 ## Package Development
 
@@ -261,6 +248,7 @@ yourcommand.help = "Description of your command";
 All packages must follow this structure:
 
 ```javascript
+// PackageName - Description
 export default async function packagename(...args) {
   // Handle input validation
   if (args.length === 0) {
@@ -298,20 +286,3 @@ packagename.help = "Brief description for the help system";
    - Any file can have text content even if it doesn't make sense to. It's your choice!
    - If you want to emulate a real terminal, set the `content` value for files that typically cannot be concatenated to an empty string.
    - You can use `content` to provide a description of the file when concatenated, without having viewed or played it first.
-
-## Contributing
-
-Contributions are welcome, whether you're:
-- Adding new packages to the community repository
-- Improving existing functionality
-- Fixing bugs or improving documentation
-- Suggesting new features
-
-Please see the [contribution guidelines](./simpacks/README.md) for more information.
-
-## Support
-
-- **Issues**: Report bugs via GitHub Issues
-- **Discussions**: Ask questions in GitHub Discussions
-- **Documentation**: Check the README.md files in the root and simpacks folders for detailed guides
-- **Examples**: Browse existing packages for inspiration
