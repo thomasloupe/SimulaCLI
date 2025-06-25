@@ -7,8 +7,26 @@ loadFileSystem();
 
 export const commands = {};
 
+// Initialize package storage
+function initializePackageStorage() {
+  if (!window.installedPackages) {
+    try {
+      // Try to load from localStorage if available
+      const stored = localStorage.getItem('simulacli_packages');
+      window.installedPackages = stored ? JSON.parse(stored) : {};
+      console.log('Loaded packages from localStorage:', Object.keys(window.installedPackages));
+    } catch (error) {
+      console.log('localStorage not available, using memory only');
+      window.installedPackages = {};
+    }
+  }
+}
+
 export async function importCommands() {
   try {
+    // Initialize package storage first
+    initializePackageStorage();
+
     // Load built-in commands
     const commandFiles = [
       'apt.js', 'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js',
@@ -34,14 +52,14 @@ export async function importCommands() {
     // Load dynamically installed packages
     await loadInstalledPackages();
 
-    console.log('All commands imported:', Object.keys(commands));
+    console.log('All commands imported:', Object.keys(commands).sort());
   } catch (error) {
     console.error('Error importing commands:', error);
   }
 }
 
 async function loadInstalledPackages() {
-  if (!window.installedPackages) {
+  if (!window.installedPackages || Object.keys(window.installedPackages).length === 0) {
     console.log('No installed packages found');
     return;
   }
@@ -50,6 +68,13 @@ async function loadInstalledPackages() {
 
   for (const [packageName, packageInfo] of Object.entries(window.installedPackages)) {
     try {
+      console.log(`Loading package: ${packageName}`);
+
+      if (!packageInfo.code) {
+        console.error(`Package ${packageName} has no code`);
+        continue;
+      }
+
       // Create a blob URL for the package code
       const blob = new Blob([packageInfo.code], { type: 'application/javascript' });
       const moduleUrl = URL.createObjectURL(blob);
@@ -57,18 +82,24 @@ async function loadInstalledPackages() {
       // Import the module dynamically
       const module = await import(moduleUrl);
 
+      if (!module.default) {
+        console.error(`Package ${packageName} has no default export`);
+        URL.revokeObjectURL(moduleUrl);
+        continue;
+      }
+
       // Register the command
       commands[packageName] = module.default;
       commands[packageName].help = module.default.help || 'No description available.';
 
-      console.log(`Installed package loaded: ${packageName}`);
+      console.log(`✅ Installed package loaded: ${packageName}`);
 
       // Clean up the blob URL
       URL.revokeObjectURL(moduleUrl);
     } catch (error) {
       console.error(`Failed to load installed package ${packageName}:`, error);
-      // Remove corrupted package
-      delete window.installedPackages[packageName];
+      console.error('Package info:', packageInfo);
+      // Don't remove corrupted packages automatically - let user debug first
     }
   }
 }
@@ -100,6 +131,7 @@ export async function executeCommand(input) {
         terminal.innerHTML += `<div>${response}</div>`;
       }
     } catch (error) {
+      console.error(`Error executing ${command}:`, error);
       terminal.innerHTML += `<div>Error executing ${command}: ${error.message}</div>`;
     }
   } else {

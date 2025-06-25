@@ -1,10 +1,30 @@
 import { isAuthenticatedAsRoot } from '../../superuser.js';
 import { getRepositories } from '../../repositories.js';
 
-// Global storage for installed packages (using window object since localStorage is not recommended)
-if (!window.installedPackages) {
-  window.installedPackages = {};
+// Initialize package storage with persistence
+function initializePackageStorage() {
+  if (!window.installedPackages) {
+    try {
+      // Try to load from localStorage if available
+      const stored = localStorage.getItem('simulacli_packages');
+      window.installedPackages = stored ? JSON.parse(stored) : {};
+    } catch (error) {
+      console.log('localStorage not available, using memory only');
+      window.installedPackages = {};
+    }
+  }
 }
+
+function savePackages() {
+  try {
+    localStorage.setItem('simulacli_packages', JSON.stringify(window.installedPackages));
+  } catch (error) {
+    console.log('Could not save to localStorage:', error.message);
+  }
+}
+
+// Initialize on load
+initializePackageStorage();
 
 export default async function apt(...args) {
   const subcommand = args[0];
@@ -24,8 +44,10 @@ export default async function apt(...args) {
       return searchPackages(packageName);
     case 'repo':
       return manageRepositories(args.slice(1));
+    case 'debug':
+      return debugPackages();
     default:
-      return `apt: invalid operation '${subcommand}'<br>Usage: apt [get|install|list|remove|update|search|repo] [package-name]`;
+      return `apt: invalid operation '${subcommand}'<br>Usage: apt [get|install|list|remove|update|search|repo|debug] [package-name]`;
   }
 }
 
@@ -55,11 +77,13 @@ async function installPackage(packageName) {
     for (const repo of repositories) {
       try {
         const packageUrl = `${repo.url}${packageName}.js`;
+        console.log(`Trying to fetch: ${packageUrl}`);
         const response = await fetch(packageUrl);
 
         if (response.ok) {
           packageCode = await response.text();
           foundInRepo = repo.name;
+          console.log(`Package found in ${repo.name}: ${packageCode.length} bytes`);
           break;
         }
       } catch (error) {
@@ -77,12 +101,14 @@ async function installPackage(packageName) {
       return `E: Package ${packageName} is malformed or missing required exports`;
     }
 
-    // Store the package in memory
+    // Store the package in memory and localStorage
     window.installedPackages[packageName] = {
       code: packageCode,
       installedAt: new Date().toISOString(),
       repository: foundInRepo
     };
+
+    savePackages();
 
     terminal.innerHTML += `<div>Fetched ${packageCode.length} B in 0s (${Math.floor(packageCode.length/1024)} kB/s)</div>`;
     terminal.innerHTML += `<div>Selecting previously unselected package ${packageName}.</div>`;
@@ -131,6 +157,8 @@ function removePackage(packageName) {
   }
 
   delete window.installedPackages[packageName];
+  savePackages();
+
   return `Removing ${packageName}...<br>Package '${packageName}' removed successfully!<br><strong>A system reboot is required to unload the command.</strong><br>Run 'reboot' to restart the system.`;
 }
 
@@ -188,4 +216,24 @@ function manageRepositories(args) {
   }
 }
 
-apt.help = "Advanced Package Tool - install, remove and manage packages. Usage: apt [get|install|list|remove|update|search|repo] [package-name]";
+function debugPackages() {
+  const packages = window.installedPackages;
+  let output = 'Debug information:<br>';
+  output += `Packages in memory: ${Object.keys(packages).length}<br>`;
+
+  try {
+    const stored = localStorage.getItem('simulacli_packages');
+    const storedPackages = stored ? JSON.parse(stored) : {};
+    output += `Packages in localStorage: ${Object.keys(storedPackages).length}<br>`;
+  } catch (error) {
+    output += `localStorage error: ${error.message}<br>`;
+  }
+
+  Object.keys(packages).forEach(pkg => {
+    output += `${pkg}: ${packages[pkg].code ? 'has code' : 'missing code'}<br>`;
+  });
+
+  return output;
+}
+
+apt.help = "Advanced Package Tool - install, remove and manage packages. Usage: apt [get|install|list|remove|update|search|repo|debug] [package-name]";
