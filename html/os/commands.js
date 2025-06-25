@@ -24,6 +24,8 @@ function initializePackageStorage() {
 
 export async function importCommands() {
   try {
+    console.log('Starting command import process...');
+
     // Initialize package storage first
     initializePackageStorage();
 
@@ -34,6 +36,7 @@ export async function importCommands() {
       'view.js', 'whoami.js'
     ];
 
+    console.log('Loading built-in commands...');
     const importPromises = commandFiles.map(async (file) => {
       try {
         const commandName = file.split('.')[0];
@@ -48,11 +51,18 @@ export async function importCommands() {
     });
 
     await Promise.all(importPromises);
+    console.log('Built-in commands loaded:', Object.keys(commands).filter(cmd => commandFiles.map(f => f.split('.')[0]).includes(cmd)));
 
     // Load dynamically installed packages
+    console.log('Loading installed packages...');
     await loadInstalledPackages();
 
     console.log('All commands imported:', Object.keys(commands).sort());
+
+    // Export for debugging
+    window.debugCommands = commands;
+    window.debugPackages = window.installedPackages;
+
   } catch (error) {
     console.error('Error importing commands:', error);
   }
@@ -64,44 +74,76 @@ async function loadInstalledPackages() {
     return;
   }
 
-  console.log('Loading installed packages:', Object.keys(window.installedPackages));
+  console.log('Found installed packages:', Object.keys(window.installedPackages));
 
   for (const [packageName, packageInfo] of Object.entries(window.installedPackages)) {
     try {
-      console.log(`Loading package: ${packageName}`);
+      console.log(`Processing package: ${packageName}`);
 
       if (!packageInfo.code) {
         console.error(`Package ${packageName} has no code`);
         continue;
       }
 
-      // Create a blob URL for the package code
-      const blob = new Blob([packageInfo.code], { type: 'application/javascript' });
-      const moduleUrl = URL.createObjectURL(blob);
+      console.log(`Package ${packageName} code length: ${packageInfo.code.length} bytes`);
 
-      // Import the module dynamically
-      const module = await import(moduleUrl);
+      // Try a different approach - use eval with module creation
+      try {
+        // Create a module-like environment
+        const moduleCode = `
+          ${packageInfo.code}
 
-      if (!module.default) {
-        console.error(`Package ${packageName} has no default export`);
-        URL.revokeObjectURL(moduleUrl);
-        continue;
+          // Ensure we have the exports
+          if (typeof ${packageName} !== 'undefined') {
+            window.tempPackage = ${packageName};
+            window.tempPackageHelp = ${packageName}.help;
+          }
+        `;
+
+        // Execute the code
+        eval(moduleCode);
+
+        if (window.tempPackage && typeof window.tempPackage === 'function') {
+          commands[packageName] = window.tempPackage;
+          commands[packageName].help = window.tempPackageHelp || 'No description available.';
+          console.log(`Package loaded via eval: ${packageName}`);
+
+          // Clean up
+          delete window.tempPackage;
+          delete window.tempPackageHelp;
+        } else {
+          throw new Error('Package function not found after eval');
+        }
+      } catch (evalError) {
+        console.log(`Eval method failed for ${packageName}, trying blob import...`);
+
+        // Fallback to blob method
+        const blob = new Blob([packageInfo.code], { type: 'application/javascript' });
+        const moduleUrl = URL.createObjectURL(blob);
+
+        try {
+          const module = await import(moduleUrl);
+
+          if (!module.default) {
+            throw new Error('No default export found');
+          }
+
+          commands[packageName] = module.default;
+          commands[packageName].help = module.default.help || 'No description available.';
+          console.log(`Package loaded via blob import: ${packageName}`);
+
+        } finally {
+          URL.revokeObjectURL(moduleUrl);
+        }
       }
 
-      // Register the command
-      commands[packageName] = module.default;
-      commands[packageName].help = module.default.help || 'No description available.';
-
-      console.log(`✅ Installed package loaded: ${packageName}`);
-
-      // Clean up the blob URL
-      URL.revokeObjectURL(moduleUrl);
     } catch (error) {
-      console.error(`Failed to load installed package ${packageName}:`, error);
-      console.error('Package info:', packageInfo);
-      // Don't remove corrupted packages automatically - let user debug first
+      console.error(`Failed to load package ${packageName}:`, error);
+      console.error('Package code preview:', packageInfo.code.substring(0, 200) + '...');
     }
   }
+
+  console.log('📋 Final commands list:', Object.keys(commands).sort());
 }
 
 export async function executeCommand(input) {
@@ -126,6 +168,7 @@ export async function executeCommand(input) {
         terminal.innerHTML += "<div>su: Authentication required</div>";
         return;
       }
+      console.log(`Found command: ${command}, executing...`);
       const response = await commands[command](...args);
       if (response !== undefined) {
         terminal.innerHTML += `<div>${response}</div>`;
@@ -135,6 +178,7 @@ export async function executeCommand(input) {
       terminal.innerHTML += `<div>Error executing ${command}: ${error.message}</div>`;
     }
   } else {
+    console.log(`Command not found: ${command}. Available commands:`, Object.keys(commands));
     terminal.innerHTML += `<div>${command}: command not found</div>`;
   }
 }
@@ -155,6 +199,3 @@ function findTarget(path, currentDir) {
   }
   return target;
 }
-
-// Export commands object for debugging
-window.debugCommands = commands;

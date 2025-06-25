@@ -1,5 +1,6 @@
 import { isAuthenticatedAsRoot } from '../../superuser.js';
 import { getRepositories } from '../../repositories.js';
+import { commands } from '../../commands.js';
 
 // Initialize package storage with persistence
 function initializePackageStorage() {
@@ -46,8 +47,12 @@ export default async function apt(...args) {
       return manageRepositories(args.slice(1));
     case 'debug':
       return debugPackages();
+    case 'test':
+      return testPackage(packageName);
+    case 'reload':
+      return reloadPackages();
     default:
-      return `apt: invalid operation '${subcommand}'<br>Usage: apt [get|install|list|remove|update|search|repo|debug] [package-name]`;
+      return `apt: invalid operation '${subcommand}'<br>Usage: apt [get|install|list|remove|update|search|repo|debug|test|reload] [package-name]`;
   }
 }
 
@@ -119,6 +124,7 @@ async function installPackage(packageName) {
     terminal.innerHTML += `<div><br><strong>Package '${packageName}' installed successfully!</strong></div>`;
     terminal.innerHTML += `<div><strong>A system reboot is required to load the new command.</strong></div>`;
     terminal.innerHTML += `<div>Run 'reboot' to restart the system and activate '${packageName}'.</div>`;
+    terminal.innerHTML += `<div><em>Alternative: Try 'apt reload' to load without rebooting.</em></div>`;
 
     return '';
   } catch (error) {
@@ -127,7 +133,7 @@ async function installPackage(packageName) {
 }
 
 function validatePackageCode(code, packageName) {
-  // Basic validation to ensure the package has the required structure
+  // Basic validation to ensure the package has the correct structure
   const hasDefaultExport = code.includes('export default') && code.includes(`function ${packageName}`);
   const hasHelpProperty = code.includes('.help =');
   return hasDefaultExport && hasHelpProperty;
@@ -142,8 +148,10 @@ function listInstalledPackages() {
   let output = 'Installed packages:<br>';
   packages.forEach(pkg => {
     const installInfo = window.installedPackages[pkg];
-    output += `${pkg} (installed: ${new Date(installInfo.installedAt).toLocaleString()}, repo: ${installInfo.repository || 'unknown'})<br>`;
+    const inCommands = commands[pkg] ? '[OK]' : '[FAIL]';
+    output += `${pkg} ${inCommands} (installed: ${new Date(installInfo.installedAt).toLocaleString()}, repo: ${installInfo.repository || 'unknown'})<br>`;
   });
+  output += '<br>[OK] = Loaded in commands, [FAIL] = Not loaded';
   return output;
 }
 
@@ -157,9 +165,12 @@ function removePackage(packageName) {
   }
 
   delete window.installedPackages[packageName];
+  if (commands[packageName]) {
+    delete commands[packageName];
+  }
   savePackages();
 
-  return `Removing ${packageName}...<br>Package '${packageName}' removed successfully!<br><strong>A system reboot is required to unload the command.</strong><br>Run 'reboot' to restart the system.`;
+  return `Removing ${packageName}...<br>Package '${packageName}' removed successfully!<br><strong>Changes will take effect immediately.</strong>`;
 }
 
 async function searchPackages(searchTerm) {
@@ -218,22 +229,98 @@ function manageRepositories(args) {
 
 function debugPackages() {
   const packages = window.installedPackages;
-  let output = 'Debug information:<br>';
-  output += `Packages in memory: ${Object.keys(packages).length}<br>`;
+  let output = '[DEBUG] Debug information:<br>';
+  output += `[INFO] Packages in memory: ${Object.keys(packages).length}<br>`;
 
   try {
     const stored = localStorage.getItem('simulacli_packages');
     const storedPackages = stored ? JSON.parse(stored) : {};
-    output += `Packages in localStorage: ${Object.keys(storedPackages).length}<br>`;
+    output += `[INFO] Packages in localStorage: ${Object.keys(storedPackages).length}<br>`;
   } catch (error) {
-    output += `localStorage error: ${error.message}<br>`;
+    output += `[ERROR] localStorage error: ${error.message}<br>`;
   }
 
+  output += `[INFO] Commands loaded: ${Object.keys(commands).length}<br>`;
+  output += `[INFO] Commands list: ${Object.keys(commands).sort().join(', ')}<br><br>`;
+
   Object.keys(packages).forEach(pkg => {
-    output += `${pkg}: ${packages[pkg].code ? 'has code' : 'missing code'}<br>`;
+    const inCommands = commands[pkg] ? '[OK] Loaded' : '[FAIL] Not loaded';
+    output += `${pkg}: ${packages[pkg].code ? 'has code' : 'missing code'} | ${inCommands}<br>`;
   });
 
   return output;
 }
 
-apt.help = "Advanced Package Tool - install, remove and manage packages. Usage: apt [get|install|list|remove|update|search|repo|debug] [package-name]";
+function testPackage(packageName) {
+  if (!packageName) {
+    return 'E: Missing package name. Usage: apt test [package-name]';
+  }
+
+  const packageInfo = window.installedPackages[packageName];
+  if (!packageInfo) {
+    return `E: Package '${packageName}' is not installed`;
+  }
+
+  let output = `[TEST] Testing package: ${packageName}<br>`;
+  output += `[INFO] Code length: ${packageInfo.code.length} bytes<br>`;
+  output += `[INFO] Installed: ${new Date(packageInfo.installedAt).toLocaleString()}<br>`;
+  output += `[INFO] Repository: ${packageInfo.repository}<br><br>`;
+
+  // Test if the code can be executed
+  try {
+    output += `[CODE] Code preview:<br><pre style="font-size: 12px; background: #333; padding: 10px; margin: 5px 0;">${packageInfo.code.substring(0, 300)}${packageInfo.code.length > 300 ? '...' : ''}</pre>`;
+
+    // Test validation
+    const isValid = validatePackageCode(packageInfo.code, packageName);
+    output += `[VALIDATION] Status: ${isValid ? 'PASSED' : 'FAILED'}<br>`;
+
+    return output;
+  } catch (error) {
+    return output + `[ERROR] Test failed: ${error.message}`;
+  }
+}
+
+async function reloadPackages() {
+  let output = '[RELOAD] Reloading packages...<br>';
+
+  const packagesToLoad = Object.keys(window.installedPackages);
+  if (packagesToLoad.length === 0) {
+    return output + 'No packages to reload.';
+  }
+
+  for (const packageName of packagesToLoad) {
+    try {
+      const packageInfo = window.installedPackages[packageName];
+
+      // Try to execute the package code directly
+      const moduleCode = `
+        ${packageInfo.code}
+
+        if (typeof ${packageName} !== 'undefined') {
+          window.tempPackage = ${packageName};
+          window.tempPackageHelp = ${packageName}.help;
+        }
+      `;
+
+      eval(moduleCode);
+
+      if (window.tempPackage && typeof window.tempPackage === 'function') {
+        commands[packageName] = window.tempPackage;
+        commands[packageName].help = window.tempPackageHelp || 'No description available.';
+        output += `[OK] Reloaded: ${packageName}<br>`;
+
+        // Clean up
+        delete window.tempPackage;
+        delete window.tempPackageHelp;
+      } else {
+        output += `[FAIL] Failed to reload: ${packageName} (function not found)<br>`;
+      }
+    } catch (error) {
+      output += `[FAIL] Failed to reload: ${packageName} (${error.message})<br>`;
+    }
+  }
+
+  return output + '<br>Package reload complete. Try your commands now!';
+}
+
+apt.help = "Advanced Package Tool - install, remove and manage packages. Usage: apt [get|install|list|remove|update|search|repo|debug|test|reload] [package-name]";
