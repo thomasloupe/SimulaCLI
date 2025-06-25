@@ -94,9 +94,19 @@ Community packages are contributed by users and offer creative, experimental fea
 
 ```bash
 # Install community packages
-apt get dice
+apt get cowsay
 reboot
-dice 2 20  # Roll 2 twenty-sided dice
+cowsay Moo!
+```
+
+SimulaCLI:
+```
+     Moo!
+        \\   ^__^
+         \\  (oo)\\_______
+            (__)\\       )\\/\\
+                ||----w |
+                ||     ||`;
 ```
 
 ### Repository Management
@@ -267,11 +277,22 @@ export default async function packagename(...args) {
 packagename.help = "Brief description for the help system";
 ```
 
+Submitted packages must also update `packages.json` with the package submission PR:
+```json
+[
+  {
+    "name": "yourPackageNameHere",
+    "description": "yourPackageDescriptionHere",
+    "version": "1.0.0",
+    "author": "yourNameHere"
+  }
+]
+```
+
 ### Best Practices
 - **Input validation**: Always validate user input
 - **Error handling**: Provide clear error messages
 - **Help text**: Include usage examples
-- **Safety**: Don't access sensitive browser APIs unnecessarily
 - **Performance**: Keep packages lightweight and fast
 
 ### Tips:

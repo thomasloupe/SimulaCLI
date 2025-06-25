@@ -1,0 +1,8 @@
+[
+  {
+    "name": "cowsay",
+    "description": "Generate ASCII art of a cow saying something",
+    "version": "1.0.0",
+    "author": "Thomas Loupe"
+  }
+]
