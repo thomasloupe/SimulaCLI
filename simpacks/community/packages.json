@@ -3,18 +3,18 @@
     "name": "cowsay",
     "description": "Generate ASCII art of a cow saying something",
     "version": "1.0.0",
-    "author": "SimulaCLI Community"
+    "author": "Thomas Loupe"
   },
   {
     "name": "dice",
     "description": "Roll dice with customizable sides and count, with crit highlighting",
     "version": "1.0.0",
-    "author": "SimulaCLI Community"
+    "author": "Thomas Loupe"
   },
   {
     "name": "iss",
     "description": "Track the International Space Station's current position with map",
     "version": "1.0.0",
-    "author": "SimulaCLI Community"
+    "author": "Thomas Loupe"
   }
 ]
