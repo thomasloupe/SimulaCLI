@@ -280,6 +280,22 @@ function testPackage(packageName) {
   }
 }
 
+function transformES6ModuleForEval(code, packageName) {
+  // Replace export default async function packageName with just the function
+  let transformedCode = code;
+
+  // Remove export default and replace with direct function assignment
+  transformedCode = transformedCode.replace(
+    /export\s+default\s+async\s+function\s+(\w+)/,
+    'async function $1'
+  );
+
+  // Add assignment at the end
+  transformedCode += `\n\nwindow.tempPackage = ${packageName};\nwindow.tempPackageHelp = ${packageName}.help;`;
+
+  return transformedCode;
+}
+
 async function reloadPackages() {
   let output = '[RELOAD] Reloading packages...<br>';
 
@@ -292,17 +308,13 @@ async function reloadPackages() {
     try {
       const packageInfo = window.installedPackages[packageName];
 
-      // Try to execute the package code directly
-      const moduleCode = `
-        ${packageInfo.code}
+      // Transform ES6 module code for eval
+      const transformedCode = transformES6ModuleForEval(packageInfo.code, packageName);
 
-        if (typeof ${packageName} !== 'undefined') {
-          window.tempPackage = ${packageName};
-          window.tempPackageHelp = ${packageName}.help;
-        }
-      `;
+      console.log(`[RELOAD] Attempting to load ${packageName} with transformed code`);
 
-      eval(moduleCode);
+      // Execute the transformed code
+      eval(transformedCode);
 
       if (window.tempPackage && typeof window.tempPackage === 'function') {
         commands[packageName] = window.tempPackage;
@@ -313,9 +325,10 @@ async function reloadPackages() {
         delete window.tempPackage;
         delete window.tempPackageHelp;
       } else {
-        output += `[FAIL] Failed to reload: ${packageName} (function not found)<br>`;
+        output += `[FAIL] Failed to reload: ${packageName} (function not found after transformation)<br>`;
       }
     } catch (error) {
+      console.error(`[ERROR] Failed to reload ${packageName}:`, error);
       output += `[FAIL] Failed to reload: ${packageName} (${error.message})<br>`;
     }
   }
