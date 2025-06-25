@@ -1,5 +1,7 @@
 import { isAuthenticatedAsRoot } from './superuser.js';
 import { fileSystem, currentPath, currentDirectory, commandHistory, loadFileSystem } from './bin/filesystem.js';
+// Import repositories to ensure it's initialized
+import './repositories.js';
 
 loadFileSystem();
 
@@ -7,24 +9,67 @@ export const commands = {};
 
 export async function importCommands() {
   try {
+    // Load built-in commands
     const commandFiles = [
-      'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js', 
-      'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js', 
-      'view.js', 'whoami.js'
+      'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js',
+      'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js',
+      'view.js', 'whoami.js', 'apt.js'
     ];
 
     const importPromises = commandFiles.map(async (file) => {
-      const commandName = file.split('.')[0];
-      const module = await import(`./bin/commands/${file}`);
-      commands[commandName] = module.default;
-      commands[commandName].help = module.default.help || 'No description available.';
-      console.log(`Command module loaded: ${commandName}`);
+      try {
+        const commandName = file.split('.')[0];
+        const module = await import(`./bin/commands/${file}`);
+        commands[commandName] = module.default;
+        commands[commandName].help = module.default.help || 'No description available.';
+        console.log(`Built-in command loaded: ${commandName}`);
+      } catch (error) {
+        console.error(`Failed to load command ${file}:`, error);
+        // Don't let one failed command break the entire system
+      }
     });
 
     await Promise.all(importPromises);
+
+    // Load dynamically installed packages
+    await loadInstalledPackages();
+
     console.log('All commands imported:', Object.keys(commands));
   } catch (error) {
     console.error('Error importing commands:', error);
+  }
+}
+
+async function loadInstalledPackages() {
+  if (!window.installedPackages) {
+    console.log('No installed packages found');
+    return;
+  }
+
+  console.log('Loading installed packages:', Object.keys(window.installedPackages));
+
+  for (const [packageName, packageInfo] of Object.entries(window.installedPackages)) {
+    try {
+      // Create a blob URL for the package code
+      const blob = new Blob([packageInfo.code], { type: 'application/javascript' });
+      const moduleUrl = URL.createObjectURL(blob);
+
+      // Import the module dynamically
+      const module = await import(moduleUrl);
+
+      // Register the command
+      commands[packageName] = module.default;
+      commands[packageName].help = module.default.help || 'No description available.';
+
+      console.log(`Installed package loaded: ${packageName}`);
+
+      // Clean up the blob URL
+      URL.revokeObjectURL(moduleUrl);
+    } catch (error) {
+      console.error(`Failed to load installed package ${packageName}:`, error);
+      // Remove corrupted package
+      delete window.installedPackages[packageName];
+    }
   }
 }
 

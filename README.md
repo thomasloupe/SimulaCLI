@@ -11,16 +11,17 @@ SimulaCLI simulates a Linux terminal environment where users can interact with a
 
 ## Getting Started
 
-To get started, simply clone this repository and move the contents inside the `html` folder into your website's home directory. Naviate to the `index.html` file in your web browser. This will launch the simulated terminal environment where you can start interacting with the simulated file system.
+To get started, simply clone this repository and move the contents inside the `html` folder into your website's home directory. Navigate to the `index.html` file in your web browser. This will launch the simulated terminal environment where you can start interacting with the simulated file system.
 
-NOTE: The default root password is `hacktheplanet`. You can generate your own hash by visiting the `generaterootpassword.html` page.  
-IMPORTANT: !DO NOT USE THE ROOT PASSWORD TO PROTECT SENSITIVE DATA!  
+NOTE: The default root password is `hacktheplanet`. You can generate your own hash by visiting the `generaterootpassword.html` page.
+IMPORTANT: !DO NOT USE THE ROOT PASSWORD TO PROTECT SENSITIVE DATA!
 SimulaCLI is client-side, and root authentication exists as a soft wall to data.
 
 ## Supported Commands
 
 Below are the default commands in SimulaCLI:
 
+- `apt`: Advanced Package Tool - install, remove and manage packages
 - `cat`: Display the content of a file. Example: `cat readme.txt`
 - `cd`: Change to the specified directory. Example: `cd music`
 - `cd ..`: Change to the previous directory.
@@ -41,9 +42,105 @@ Below are the default commands in SimulaCLI:
 - `view`: View an image file in a new tab. Example: `view image1.jpg`
 - `whoami`: Display the current user.
 
+## Package System
+
+SimulaCLI features a comprehensive package management system that allows you to install additional commands and functionality, similar to Linux package managers like `apt`.
+
+### Installing Packages
+
+Use the `apt` command to manage packages:
+
+```bash
+# Install a package
+apt get fortune
+
+# Search for packages
+apt search calc
+
+# List installed packages
+apt list
+
+# Remove a package
+apt remove fortune
+
+# Update package lists
+apt update
+```
+
+**Important:** After installing or removing packages, you must run `reboot` to restart the terminal and load the changes.
+
+### Package Categories
+
+#### Official Packages
+Official packages are maintained by the SimulaCLI team and provide core functionality:
+
+- `fortune` - Display random inspirational quotes
+- `calc` - Mathematical calculator
+- `weather` - Weather information display
+- `sysinfo` - System information viewer
+
+```bash
+# Install official packages
+apt get fortune
+reboot
+fortune
+```
+
+#### Community Packages
+Community packages are contributed by users and offer creative, experimental features:
+
+- `dice` - Roll dice with customizable sides
+- `notes` - Complete note-taking system
+- `timer` - Countdown timer with alerts
+- `password` - Secure password generator
+- `ascii` - ASCII art text generator
+
+```bash
+# Install community packages
+apt get dice
+reboot
+dice 2 20  # Roll 2 twenty-sided dice
+```
+
+### Repository Management
+
+SimulaCLI comes with two default repositories:
+
+- **official** - Official packages maintained by the SimulaCLI team
+- **community** - Community-contributed packages
+
+You can also add custom repositories:
+
+```bash
+# List repositories
+apt repo list
+
+# Add a custom repository
+apt repo add myrepo https://raw.githubusercontent.com/username/repo/main/simpacks/ "My custom packages"
+
+# Remove a repository
+apt repo remove myrepo
+
+# Reset to default repositories
+apt repo reset
+```
+
+### Creating and Contributing Packages
+
+Want to create your own packages? Check out the [simpacks directory](./simpacks/) for:
+
+- Package development guidelines
+- Contribution instructions
+- Example packages
+- Code standards and best practices
+
+Packages are stored in the `simpacks` folder:
+- `simpacks/official/` - Official packages
+- `simpacks/community/` - Community contributions
+
 ## Setting Up Your Own Volume
 
-You can customize the simulated file system by setting up your own hard drive volume. Every hard drive must start at `/` (root). There are two types of files: `directory` and `file`. 
+You can customize the simulated file system by setting up your own hard drive volume. Every hard drive must start at `/` (root). There are two types of files: `directory` and `file`.
 
 Follow these guidelines to set up your own hard drive:
 
@@ -77,28 +174,6 @@ Here's an example hard drive setup in JSON format:
             "content": "",
             "goto": "",
             "size": "512000"
-          },
-          "image2.jpg": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": true,
-            "playable": false,
-            "content": "",
-            "goto": "",
-            "size": "466944"
-          },
-          "image3.jpg": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": true,
-            "playable": false,
-            "content": "",
-            "goto": "",
-            "size": "520192"
           }
         }
       },
@@ -117,57 +192,6 @@ Here's an example hard drive setup in JSON format:
             "content": "",
             "goto": "",
             "size": "643072"
-          },
-          "track2.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "",
-            "size": "548864"
-          },
-          "track3.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "",
-            "size": "643072"
-          },
-          "track4.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "",
-            "size": "643072"
-          }
-        }
-      },
-      "dontlook": {
-        "type": "directory",
-        "owner": "root",
-        "permissions": "rwx",
-        "children": {
-          "dontwatch.mp4": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": false,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            "size": "49"
           }
         }
       },
@@ -181,18 +205,6 @@ Here's an example hard drive setup in JSON format:
         "content": "SimulaCLI - https://github.com/thomasloupe/simulacli<br>Learn more about this project, and all of my work at https://thomasloupe.com!",
         "goto": "",
         "size": "135"
-      },
-      "dontreadme.txt": {
-        "type": "file",
-        "owner": "root",
-        "permissions": "rwx",
-        "downloadable": false,
-        "viewable": true,
-        "playable": false,
-        "content": "",
-        "goto": "https://www.juhsd.net/cms/lib/CA01902464/Centricity/Domain/256/2016_The%20Veldt.pdf",
-        "size": "88",
-        "superuser": "true"
       }
     }
   }
@@ -200,6 +212,8 @@ Here's an example hard drive setup in JSON format:
 ```
 
 ## Creating Your Own SimulaCLI Command(s)
+
+### Method 1: Built-in Commands (Advanced)
 1. Write the JavaScript code for your command.
 2. On the last line of your command's JavaScript file, add a help property. This is required for the `help` command. Here's an example using the `clear` command that's included with SimulaCLI:
 
@@ -211,28 +225,93 @@ export default async function clear() {
 clear.help = "Clear the terminal screen.";
 ```
 
-3. In the `/os/` folder, open `commands.js` and add your `commandNameHere.js` to the `importCommands()` function (see below code snippet).When SimulaCLI boots up, it checks for command modules in the `/os/bin/commands/` folder and automatically loads them. If there's an error in your command, you'll see this function fail in the browser console when it attempts to load your command.
-   
+3. In the `/os/` folder, open `commands.js` and add your `commandNameHere.js` to the `importCommands()` function:
+
 ```javascript
 export async function importCommands() {
   try {
     const commandFiles = [
-      'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js', 
-      'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js', 
-      'view.js', 'whoami.js, commandNameHere.js'
+      'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js',
+      'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js',
+      'view.js', 'whoami.js', 'apt.js', 'commandNameHere.js'
     ];
 ```
 
+### Method 2: Package System (Recommended)
+The easier way is to create packages that can be installed via the `apt` system:
+
+1. **Fork this repository**
+2. **Create your package** in `simpacks/community/yourcommand.js`
+3. **Follow the package format:**
+
+```javascript
+export default async function yourcommand(...args) {
+  // Your command logic here
+  return "Command output";
+}
+
+yourcommand.help = "Description of your command";
+```
+
+4. **Submit a pull request** to contribute your package to the community
+
+## Package Development
+
+### Package Format
+All packages must follow this structure:
+
+```javascript
+export default async function packagename(...args) {
+  // Handle input validation
+  if (args.length === 0) {
+    return "Usage: packagename [options]";
+  }
+
+  // Your command logic
+  try {
+    // Implementation here
+    return "Success output";
+  } catch (error) {
+    return `Error: ${error.message}`;
+  }
+}
+
+packagename.help = "Brief description for the help system";
+```
+
+### Best Practices
+- **Input validation**: Always validate user input
+- **Error handling**: Provide clear error messages
+- **Help text**: Include usage examples
+- **Safety**: Don't access sensitive browser APIs unnecessarily
+- **Performance**: Keep packages lightweight and fast
+
 ### Tips:
 
-1. **File Extensions**: 
-   - Ensure any file you add has an extension, just as it would in a real Linux terminal. 
+1. **File Extensions**:
+   - Ensure any file you add has an extension, just as it would in a real Linux terminal.
 
-2. **Matching Filenames**: 
-   - Ensure any files being downloaded, played, or viewed, match the full filename and extension of the files in your hard drive. 
+2. **Matching Filenames**:
+   - Ensure any files being downloaded, played, or viewed, match the full filename and extension of the files in your hard drive.
 
-3. **Text Content**: 
-   - Any file can have text content even if it doesn't make sense to. It's your choice! 
-   - If you want to emulate a real terminal, set the `content` value for files that typically cannot be concatenated to an empty string. 
-   - You can use `content` to provide a description of the file when concatenated, without having viewed or played it first. 
-   
+3. **Text Content**:
+   - Any file can have text content even if it doesn't make sense to. It's your choice!
+   - If you want to emulate a real terminal, set the `content` value for files that typically cannot be concatenated to an empty string.
+   - You can use `content` to provide a description of the file when concatenated, without having viewed or played it first.
+
+## Contributing
+
+Contributions are welcome, whether you're:
+- Adding new packages to the community repository
+- Improving existing functionality
+- Fixing bugs or improving documentation
+- Suggesting new features
+
+Please see the [contribution guidelines](./simpacks/README.md) for more information.
+
+## Support
+
+- **Issues**: Report bugs via GitHub Issues
+- **Discussions**: Ask questions in GitHub Discussions
+- **Documentation**: Check the README.md files in the root and simpacks folders for detailed guides
+- **Examples**: Browse existing packages for inspiration
