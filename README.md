@@ -95,18 +95,20 @@ Community packages are contributed by users and offer creative, experimental fea
 ```bash
 # Install community packages
 apt get cowsay
-reboot
-cowsay Moo!
+reboot (or try apt reload)
+cowsay MooOoOOooOOOO!
 ```
 
 SimulaCLI:
 ```
-     Moo!
-        \\   ^__^
-         \\  (oo)\\_______
-            (__)\\       )\\/\\
+ ________________
+< MooOoOOooOOOO! >
+ ----------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
                 ||----w |
-                ||     ||`;
+                ||     ||
 ```
 
 ### Repository Management
