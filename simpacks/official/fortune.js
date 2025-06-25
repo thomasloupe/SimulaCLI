@@ -1,4 +1,4 @@
-// Fortune - This module provides a random fortune cookie message.
+// Fortunes - Displays a random fortune cookie message.
 const fortunes = [
   "The best way to predict the future is to create it.",
   "In the middle of difficulty lies opportunity.",
@@ -9,13 +9,15 @@ const fortunes = [
   "Success is not final, failure is not fatal: it is the courage to continue that counts.",
   "The way to get started is to quit talking and begin doing.",
   "Don't let yesterday take up too much of today.",
-  "You learn more from failure than from success."
+  "You learn more from failure than from success.",
+  "SimulaCLI: Because sometimes you need a terminal that doesn't judge your commands.",
+  "In a world of GUIs, be a CLI."
 ];
 
 export default async function fortune() {
   const randomIndex = Math.floor(Math.random() * fortunes.length);
   return `<div style="border: 1px solid #0f0; padding: 10px; margin: 5px 0;">
-    <strong>Fortune says:</strong><br>
+    <strong>🥠 Fortune says:</strong><br>
     ${fortunes[randomIndex]}
   </div>`;
 }
