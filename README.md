@@ -320,4 +320,4 @@ Submitted packages must also update `packages.json` with the package submission 
 3. **Text Content**:
    - Any file can have text content even if it doesn't make sense to. It's your choice!
    - If you want to emulate a real terminal, set the `content` value for files that typically cannot be concatenated to an empty string.
-   - You can use `content` to provide a description of the file when concatenated, without having viewed or played it first.
+   - You can use `content` to provide a description of the file when concatenated, without having viewed or played it first
