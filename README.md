@@ -3,6 +3,7 @@
 SimulaCLI is a customizable, modular, simulated Linux terminal created in JavaScript.
 
 ## Preview
+
 ![SimulaCLI Interface](https://github.com/thomasloupe/SimulaCLI/blob/main/SimulaCLI.png?raw=true)
 
 ## Introduction
@@ -75,6 +76,7 @@ simpack debug
 ### Package Categories
 
 #### Official Packages
+
 Official packages are maintained by SimulaCLI and provide core functionality:
 
 - `fortune` - Display random inspirational quotes
@@ -90,6 +92,7 @@ fortune
 ```
 
 #### Community Packages
+
 Community packages are contributed by users and offer creative, experimental features, or expand existing features:
 
 ```bash
@@ -100,7 +103,9 @@ cowsay MooOoOOooOOOO!
 ```
 
 SimulaCLI:
-```
+
+```plaintext
+
  ________________
 < MooOoOOooOOOO! >
  ----------------
@@ -137,14 +142,15 @@ simpack repo reset
 ### Creating and Contributing Packages
 
 Want to submit a Community Simpack? Packages are stored in the `simpacks` folder:
+
 - `simpacks/official/` - Official packages
 - `simpacks/community/` - Community contributions
 
 Outstanding community packages will be promoted to official packages if the contributing author of the community package and SimulaCLI see fit.
 To contribute your own community package, use the official or community packages already provided as a starting point, then create a PR with:
+
 - Your package as `packageNameHere.js`.
 - An update to `packages.json` including your package.
-
 
 ## Setting Up Your Own Volume
 
@@ -222,16 +228,17 @@ Here's an example hard drive setup in JSON format:
 ## Creating Your Own SimulaCLI Command(s)
 
 ### Method 1: Built-in Commands (Advanced)
+
 1. Write the JavaScript code for your command.
 2. On the last line of your command's JavaScript file, add a help property. This is required for the `help` command. Here's an example using the `clear` command that's included with SimulaCLI:
 
-```javascript
-export default async function clear() {
-  document.getElementById('terminal').innerHTML = '';
-  return '';
-}
-clear.help = "Clear the terminal screen.";
-```
+    ```javascript
+    export default async function clear() {
+      document.getElementById('terminal').innerHTML = '';
+      return '';
+    }
+    clear.help = "Clear the terminal screen.";
+    ```
 
 3. In the `/os/` folder, open `commands.js` and add your `commandNameHere.js` to the `importCommands()` function:
 
@@ -246,6 +253,7 @@ export async function importCommands() {
 ```
 
 ### Method 2: Package System (Recommended)
+
 The easier way is to create packages that can be installed via the `simpack` system:
 
 1. **Fork this repository**
@@ -257,6 +265,7 @@ The easier way is to create packages that can be installed via the `simpack` sys
 ## Package Development
 
 ### Package Format
+
 All packages must follow this structure:
 
 ```javascript
@@ -281,6 +290,7 @@ packagename.help = "Brief description for the help system";
 ```
 
 Submitted packages must also update `packages.json` with the package submission PR:
+
 ```json
 [
   {
@@ -293,12 +303,13 @@ Submitted packages must also update `packages.json` with the package submission 
 ```
 
 ### Best Practices
+
 - **Input validation**: Always validate user input
 - **Error handling**: Provide clear error messages
 - **Help text**: Include usage examples
 - **Performance**: Keep packages lightweight and fast
 
-### Tips:
+### Tips
 
 1. **File Extensions**:
    - Ensure any file you add has an extension, just as it would in a real Linux terminal.
