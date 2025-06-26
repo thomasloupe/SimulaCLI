@@ -48,7 +48,7 @@ export async function importCommands() {
     const commandFiles = [
       'apt.js', 'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js',
       'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js',
-      'view.js', 'whoami.js'
+      'termconfig.js', 'view.js', 'whoami.js'
     ];
 
     console.log('[COMMANDS] Loading built-in commands...');
