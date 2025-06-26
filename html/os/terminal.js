@@ -1,6 +1,5 @@
 import { executeCommand, importCommands } from './commands.js';
 import { isAuthenticatedAsRoot, isAuthenticationRequired, verifyRootPassword } from './superuser.js';
-import { getSetting } from './bin/commands/termconfig.js';
 
 const terminal = document.getElementById('terminal');
 const commandInput = document.getElementById('commandInput');
@@ -11,6 +10,27 @@ export const shutdownSound = document.getElementById('shutdownSound');
 
 let backgroundAudioPlayed = false;
 let terminalActivated = false;
+
+// Safe getter for settings that handles when termconfig isn't loaded yet
+function getSetting(key) {
+  try {
+    // Try to get the setting if termconfig is loaded
+    if (window.terminalSettings && window.terminalSettings[key] !== undefined) {
+      return window.terminalSettings[key];
+    }
+    // Default values if termconfig isn't loaded yet
+    const defaults = {
+      keystrokes: true,
+      drivehum: true,
+      bootupsim: true,
+      rebootsim: true
+    };
+    return defaults[key] !== undefined ? defaults[key] : true;
+  } catch (error) {
+    console.log('Settings not available yet, using defaults');
+    return true; // Default to enabled
+  }
+}
 
 async function initialize() {
     await importCommands();
@@ -58,10 +78,8 @@ async function activateTerminal(playBootSound = false) {
         // Check bootup simulation setting
         if (playBootSound && getSetting('bootupsim')) {
             await playBootupSound();
-        } else if (playBootSound && !getSetting('bootupsim')) {
-            // Skip bootup simulation but still show MOTD
-            await displayMotd();
         } else {
+            // Always show MOTD if not doing boot simulation
             await displayMotd();
         }
 
@@ -77,7 +95,7 @@ async function activateTerminal(playBootSound = false) {
 }
 
 async function playBootupSound() {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
         const bootingMessage = document.createElement('div');
         bootingMessage.textContent = 'Booting';
         terminal.appendChild(bootingMessage);
@@ -97,16 +115,18 @@ async function playBootupSound() {
         // Check background audio setting before playing
         if (getSetting('drivehum')) {
             backgroundAudio.play().catch(error => console.log('Bootup sound play failed:', error));
-            backgroundAudio.onended = () => {
+            backgroundAudio.onended = async () => {
                 clearInterval(interval);
                 bootingMessage.remove();
+                await displayMotd(); // Show MOTD after boot animation
                 resolve();
             };
         } else {
             // If audio is disabled, just show the animation for a shorter time
-            setTimeout(() => {
+            setTimeout(async () => {
                 clearInterval(interval);
                 bootingMessage.remove();
+                await displayMotd(); // Show MOTD after boot animation
                 resolve();
             }, 3000); // 3 second animation without audio
         }

@@ -1,6 +1,26 @@
 import { displayMotd, playReturnSound, playShutdownSound, stopAllAudio, nextAudio, returnSound, backgroundAudio } from '../../terminal.js';
 import { resetToRoot } from '../filesystem.js';
-import { getSetting } from './termconfig.js';
+
+// Safe getter for settings that handles when termconfig isn't loaded yet
+function getSetting(key) {
+  try {
+    // Try to get the setting if termconfig is loaded
+    if (window.terminalSettings && window.terminalSettings[key] !== undefined) {
+      return window.terminalSettings[key];
+    }
+    // Default values if termconfig isn't loaded yet
+    const defaults = {
+      keystrokes: true,
+      drivehum: true,
+      bootupsim: true,
+      rebootsim: true
+    };
+    return defaults[key] !== undefined ? defaults[key] : true;
+  } catch (error) {
+    console.log('Settings not available yet, using defaults');
+    return true; // Default to enabled
+  }
+}
 
 export default async function reboot() {
   const terminal = document.getElementById('terminal');
