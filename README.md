@@ -6,6 +6,10 @@ SimulaCLI is a customizable, modular, simulated Linux terminal created in JavaSc
 
 ![SimulaCLI Interface](https://github.com/thomasloupe/SimulaCLI/blob/main/SimulaCLI.png?raw=true)
 
+## Live Demo
+
+![SimulaCLI](https://simulacli.com)
+
 ## Introduction
 
 SimulaCLI simulates a Linux terminal environment where users can interact with a simulated file system. You can navigate directories, view files, play audio/video files, execute typical linux commands, and more. The terminal runs entirely within the client's own browser. Users can create their own hard drive volumes, as well as create their own custom SimulaCLI commands!
