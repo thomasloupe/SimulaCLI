@@ -133,9 +133,6 @@ simpack debug
 Official packages are maintained by SimulaCLI and provide core functionality:
 
 - `fortune` - Display random inspirational quotes
-- `calc` - Mathematical calculator
-- `weather` - Weather information display
-- `sysinfo` - System information viewer
 
 ```bash
 # Install official packages
@@ -167,6 +164,12 @@ SimulaCLI:
                 ||----w |
                 ||     ||
 ```
+
+The following community packages were created and are maintained by SimulaCLI:
+
+- `cowsay` - Generate ASCII art of a cow saying something
+- `dice` - Roll dice with customizable sides and count
+- `iss` - International Space Station tracker with location and map
 
 ### Repository Management
 
