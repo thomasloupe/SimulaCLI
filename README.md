@@ -33,6 +33,7 @@ Below are the default commands in SimulaCLI:
 - `clear`: Clear the terminal screen.
 - `echo`: Display a line of text. Example: `echo hello world!`
 - `exit`: Exit the terminal.
+- `grep`: Search for patterns in files or piped input. Example: `grep "text" filename`
 - `help`: Display all available commands.
 - `history`: Show session command history.
 - `ifconfig`: Display network configuration.
@@ -44,8 +45,56 @@ Below are the default commands in SimulaCLI:
 - `reboot`: Reboots the Operating System.
 - `scp`: Download a file if that file is available for download. Example: `scp track1.mp3`
 - `shutdown`: Shutdown the Operating System.
+- `sleep`: Sleep for specified duration in seconds. Example: `sleep 5`
+- `termconfig`: Manage terminal behavior and appearance settings
 - `view`: View an image file in a new tab. Example: `view image1.jpg`
+- `wc`: Count lines, words, and characters in files or piped input
 - `whoami`: Display the current user.
+
+## Supported Operators
+
+SimulaCLI supports several operators for command chaining, piping, and redirection:
+
+### Redirection Operators
+
+- `>` - **Redirect output** (overwrite): Redirects command output to a file, replacing existing content
+  - Example: `ls > filelist.txt` - Save directory listing to a file
+- `>>` - **Redirect output** (append): Redirects command output to a file, appending to existing content
+  - Example: `echo "new line" >> log.txt` - Add text to end of file
+
+### Pipe Operator
+
+- `|` - **Pipe**: Sends output from one command as input to another command
+  - Example: `cat readme.txt | grep "SimulaCLI"` - Search for "SimulaCLI" in readme.txt
+  - Example: `ls | wc` - Count files in current directory
+
+### Logical Operators
+
+- `&&` - **AND operator**: Execute the next command only if the previous command succeeds
+  - Example: `cd music && ls` - Change to music directory, then list contents if successful
+- `&` - **Background operator**: Execute command in background (simulated)
+  - Example: `sleep 10 &` - Run sleep command in background
+
+### Operator Examples
+
+```bash
+# Redirection examples
+echo "Hello World" > greeting.txt
+ls -l >> output.log
+
+# Pipe examples
+cat readme.txt | grep "SimulaCLI"
+history | wc
+
+# Command chaining
+cd img && ls && pwd
+
+# Complex combinations
+cat readme.txt | grep "SimulaCLI" > results.txt
+ls | grep ".txt" | wc > file_count.txt
+```
+
+**Note:** Commands can be interrupted with `Ctrl+C`, and operators respect proper command execution flow and error handling.
 
 ## Package System
 
@@ -109,7 +158,6 @@ cowsay MooOoOOooOOOO!
 SimulaCLI:
 
 ```plaintext
-
  ________________
 < MooOoOOooOOOO! >
  ----------------
@@ -324,4 +372,4 @@ Submitted packages must also update `packages.json` with the package submission 
 3. **Text Content**:
    - Any file can have text content even if it doesn't make sense to. It's your choice!
    - If you want to emulate a real terminal, set the `content` value for files that typically cannot be concatenated to an empty string.
-   - You can use `content` to provide a description of the file when concatenated, without having viewed or played it first
+   - You can use `content` to provide a description of the file when concatenated, without having viewed or played it first.
