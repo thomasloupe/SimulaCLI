@@ -38,6 +38,42 @@ function getSetting(key) {
   }
 }
 
+// Universal function to convert URLs in text to clickable HTML links
+function makeUrlsClickable(text) {
+    // Skip processing if text already contains HTML links (to avoid double-processing)
+    if (text && text.includes('<a href=')) {
+        return text;
+    }
+
+    // Get link colors from termconfig or use defaults
+    const linkSettings = window.terminalLinkSettings || { color: '#0ff', hovercolor: '#fff' };
+    const linkColor = linkSettings.color || '#0ff';
+    const hoverColor = linkSettings.hovercolor || '#fff';
+
+    // Regular expression to match URLs (http, https, or just domain names)
+    const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)/g;
+
+    return text.replace(urlRegex, (url) => {
+        // Ensure the URL has a protocol
+        let href = url;
+        if (!url.match(/^https?:\/\//)) {
+            href = 'https://' + url;
+        }
+
+        // Create clickable link that opens in new tab with configurable terminal styling
+        return `<a href="${href}" target="_blank" style="color: ${linkColor}; text-decoration: underline; cursor: pointer;" onmouseover="this.style.color='${hoverColor}'" onmouseout="this.style.color='${linkColor}'">${url}</a>`;
+    });
+}
+
+// Helper function to safely add content to terminal with URL linking
+function addToTerminal(content, makeLinksClickable = true) {
+    if (makeLinksClickable && content) {
+        content = makeUrlsClickable(content);
+    }
+    terminal.innerHTML += `<div>${content}</div>`;
+    terminal.scrollTop = terminal.scrollHeight;
+}
+
 // Register timeout/interval for cleanup on interrupt
 export function registerTimeout(timeoutId) {
   currentTimeouts.push(timeoutId);
@@ -210,10 +246,12 @@ async function playBootupSound() {
         // Register interval for potential interruption
         registerInterval(interval);
 
+        // Start background audio if enabled, but don't wait for it to finish
         if (getSetting('drivehum')) {
             backgroundAudio.play().catch(error => console.log('Bootup sound play failed:', error));
         }
 
+        // Always complete boot animation after a reasonable time (4 seconds)
         const timeout = setTimeout(async () => {
             clearInterval(interval);
             bootingMessage.remove();
@@ -254,7 +292,9 @@ async function handleCommand(event) {
                     if (result && result.action === 'clear') {
                         terminal.innerHTML = '';
                     } else if (result !== undefined && result !== '') {
-                        terminal.innerHTML += `<div>${result}</div>`;
+                        // Use makeUrlsClickable to process all command outputs for URLs
+                        const processedResult = makeUrlsClickable(result);
+                        terminal.innerHTML += `<div>${processedResult}</div>`;
                     }
                 }
             } catch (error) {
@@ -263,7 +303,9 @@ async function handleCommand(event) {
                 } else {
                     console.error('[ERROR] Command execution error:', error);
                     if (isCommandRunning) {
-                        terminal.innerHTML += `<div>Error: ${error.message}</div>`;
+                        // Process error messages for URLs too
+                        const errorMsg = makeUrlsClickable(`Error: ${error.message}`);
+                        terminal.innerHTML += `<div>${errorMsg}</div>`;
                     }
                 }
             } finally {
@@ -296,22 +338,9 @@ export async function displayMotd() {
         terminal.innerHTML += `<pre>${contentWithLinks}</pre>`;
     } catch (error) {
         console.error('Error loading MOTD:', error);
-        terminal.innerHTML += "<div>Error: Could not load MOTD</div>";
+        const errorMsg = makeUrlsClickable("Error: Could not load MOTD");
+        terminal.innerHTML += `<div>${errorMsg}</div>`;
     }
-}
-
-function makeUrlsClickable(text) {
-    // Regular expression to match URLs (http, https, or just domain names)
-    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g;
-
-    return text.replace(urlRegex, (url) => {
-        let href = url;
-        if (!url.match(/^https?:\/\//)) {
-            href = 'https://' + url;
-        }
-
-        return `<a href="${href}" target="_blank" style="color: #0ff; text-decoration: underline; cursor: pointer;">${url}</a>`;
-    });
 }
 
 export function playReturnSound() {
@@ -350,12 +379,16 @@ export function checkForAbort() {
     }
 }
 
+// Export the helper functions for use in other modules
+export { makeUrlsClickable, addToTerminal };
+
 window.addEventListener('exitCommandTriggered', () => {
     stopAllAudio();
     playShutdownSound();
     shutdownSound.onended = () => {
         localStorage.setItem('terminalShutdown', 'true');
-        terminal.innerHTML = "<div>System is shut down. Click to start.</div>";
+        const shutdownMsg = makeUrlsClickable("System is shut down. Click to start.");
+        terminal.innerHTML = `<div>${shutdownMsg}</div>`;
         commandInput.disabled = true;
         terminalActivated = false;
     };

@@ -14,7 +14,9 @@ const DEFAULT_SETTINGS = {
   promptsize: 1,        // Command prompt size multiplier (1-5)
   placeholdertext: 'Type commands here...', // Placeholder text in input
   placeholdercolor: 'gray', // Placeholder text color
-  commandlinebackground: '#3f3f3f' // Command line input background color
+  commandlinebackground: '#3f3f3f', // Command line input background color
+  linkcolor: '#0ff',    // URL link color (cyan)
+  linkhovercolor: '#fff' // URL link hover color (white)
 };
 
 // Initialize settings storage
@@ -112,6 +114,8 @@ export default async function termconfig(...args) {
     case 'promptcolor':
     case 'placeholdercolor':
     case 'commandlinebackground':
+    case 'linkcolor':
+    case 'linkhovercolor':
       if (args.length < 2) {
         const currentValue = getSetting(subcommand);
         return `${subcommand}: ${currentValue}`;
@@ -164,14 +168,16 @@ Command Line Input:<br>
   placeholdertext - Set placeholder text (use "" for empty)<br>
   placeholdercolor - Set placeholder text color<br>
   commandlinebackground - Set command input background color<br><br>
+URL Link Settings:<br>
+  linkcolor     - Set URL link color<br>
+  linkhovercolor - Set URL link hover color<br><br>
 Examples:<br>
   termconfig textcolor cyan         - Set text to cyan<br>
   termconfig promptcolor red        - Set "> " prompt to red<br>
   termconfig promptsize 3           - Make prompt 3x larger<br>
+  termconfig linkcolor yellow       - Set URL links to yellow<br>
+  termconfig linkhovercolor red     - Set URL hover to red<br>
   termconfig placeholdertext ""     - Remove placeholder text<br>
-  termconfig placeholdertext "Enter command..." - Set custom placeholder<br>
-  termconfig placeholdercolor blue  - Set placeholder to blue<br>
-  termconfig commandlinebackground navy - Set input background to navy<br>
   termconfig colors                 - See all available colors`;
 }
 
@@ -203,6 +209,10 @@ function showCurrentSettings() {
   output += `placeholdertext: "<span style="color: ${getSetting('placeholdercolor')};">${displayText}</span>" - Placeholder text<br>`;
   output += `placeholdercolor: <span style="color: ${getSetting('placeholdercolor')};">${getSetting('placeholdercolor')}</span> - Placeholder color<br>`;
   output += `commandlinebackground: <span style="background-color: ${getSetting('commandlinebackground')}; color: white; padding: 2px 4px;">${getSetting('commandlinebackground')}</span> - Input background<br><br>`;
+
+  output += '<u>URL Link Settings:</u><br>';
+  output += `linkcolor     : <span style="color: ${getSetting('linkcolor')};">${getSetting('linkcolor')}</span> - URL link color<br>`;
+  output += `linkhovercolor: <span style="color: ${getSetting('linkhovercolor')};">${getSetting('linkhovercolor')}</span> - URL hover color<br><br>`;
 
   output += '<em>Use "termconfig [setting] [value]" to change values</em>';
 
@@ -277,6 +287,9 @@ promptsize    : 1x<br><br>
 placeholdertext: "Type commands here..."<br>
 placeholdercolor: <span style="color: gray;">gray</span><br>
 commandlinebackground: <span style="background-color: #3f3f3f; color: white; padding: 2px 4px;">#3f3f3f</span><br><br>
+<u>URL Links:</u><br>
+linkcolor     : <span style="color: #0ff;">#0ff (cyan)</span><br>
+linkhovercolor: <span style="color: #fff;">#fff (white)</span><br><br>
 All settings have been restored to their default values.`;
 }
 
@@ -530,7 +543,13 @@ function applyVisualSettings() {
         size: settings.promptsize
       };
 
-      console.log(`[TERMCONFIG] Applied visual settings - terminal bg: ${settings.backgroundcolor}, text: ${settings.textcolor}, caret: ${settings.caretcolor} ${settings.caretsize}x, prompt: ${settings.promptcolor} ${settings.promptsize}x`);
+      // Store link settings globally so terminal.js can use them
+      window.terminalLinkSettings = {
+        color: AVAILABLE_COLORS[settings.linkcolor] || settings.linkcolor,
+        hovercolor: AVAILABLE_COLORS[settings.linkhovercolor] || settings.linkhovercolor
+      };
+
+      console.log(`[TERMCONFIG] Applied visual settings - terminal bg: ${settings.backgroundcolor}, text: ${settings.textcolor}, caret: ${settings.caretcolor} ${settings.caretsize}x, prompt: ${settings.promptcolor} ${settings.promptsize}x, links: ${settings.linkcolor}/${settings.linkhovercolor}`);
     }
   } catch (error) {
     console.error('[TERMCONFIG] Error applying visual settings:', error);
@@ -581,4 +600,4 @@ if (typeof window !== 'undefined') {
 // Export the visual settings function for use by terminal.js
 export { applyVisualSettings };
 
-termconfig.help = "Manage terminal behavior and appearance settings (audio, simulations, colors, etc). Usage: termconfig [setting] [value]";
+termconfig.help = "Manage terminal behavior and appearance settings (audio, simulations, colors, URL links, etc). Usage: termconfig [setting] [value]";
