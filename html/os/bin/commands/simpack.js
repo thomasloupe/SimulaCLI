@@ -27,7 +27,7 @@ function savePackages() {
 // Initialize on load
 initializePackageStorage();
 
-export default async function apt(...args) {
+export default async function simpack(...args) {
   const subcommand = args[0];
   const packageName = args[1];
 
@@ -52,13 +52,13 @@ export default async function apt(...args) {
     case 'reload':
       return reloadPackages();
     default:
-      return `apt: invalid operation '${subcommand}'<br>Usage: apt [get|install|list|remove|update|search|repo|debug|test|reload] [package-name]`;
+      return `simpack: invalid operation '${subcommand}'<br>Usage: simpack [get|install|list|remove|update|search|repo|debug|test|reload] [package-name]`;
   }
 }
 
 async function installPackage(packageName) {
   if (!packageName) {
-    return 'E: Missing package name. Usage: apt get [package-name]';
+    return 'E: Missing package name. Usage: simpack get [package-name]';
   }
 
   try {
@@ -124,7 +124,7 @@ async function installPackage(packageName) {
     terminal.innerHTML += `<div><br><strong>Package '${packageName}' installed successfully!</strong></div>`;
     terminal.innerHTML += `<div><strong>A system reboot is required to load the new command.</strong></div>`;
     terminal.innerHTML += `<div>Run 'reboot' to restart the system and activate '${packageName}'.</div>`;
-    terminal.innerHTML += `<div><em>Alternative: Try 'apt reload' to load without rebooting.</em></div>`;
+    terminal.innerHTML += `<div><em>Alternative: Try 'simpack reload' to load without rebooting.</em></div>`;
 
     return '';
   } catch (error) {
@@ -142,7 +142,7 @@ function validatePackageCode(code, packageName) {
 function listInstalledPackages() {
   const packages = Object.keys(window.installedPackages);
   if (packages.length === 0) {
-    return 'No packages installed via apt.';
+    return 'No packages installed via simpack.';
   }
 
   let output = 'Installed packages:<br>';
@@ -157,7 +157,7 @@ function listInstalledPackages() {
 
 function removePackage(packageName) {
   if (!packageName) {
-    return 'E: Missing package name. Usage: apt remove [package-name]';
+    return 'E: Missing package name. Usage: simpack remove [package-name]';
   }
 
   if (!window.installedPackages[packageName]) {
@@ -175,7 +175,7 @@ function removePackage(packageName) {
 
 async function searchPackages(searchTerm) {
   if (!searchTerm) {
-    return 'E: Missing search term. Usage: apt search [term]';
+    return 'E: Missing search term. Usage: simpack search [term]';
   }
 
   const repositories = getRepositories();
@@ -223,7 +223,7 @@ function manageRepositories(args) {
       });
       return output;
     default:
-      return 'Repository management: apt repo list';
+      return 'Repository management: simpack repo list';
   }
 }
 
@@ -253,7 +253,7 @@ function debugPackages() {
 
 function testPackage(packageName) {
   if (!packageName) {
-    return 'E: Missing package name. Usage: apt test [package-name]';
+    return 'E: Missing package name. Usage: simpack test [package-name]';
   }
 
   const packageInfo = window.installedPackages[packageName];
@@ -336,4 +336,4 @@ async function reloadPackages() {
   return output + '<br>Package reload complete. Try your commands now!';
 }
 
-apt.help = "Advanced Package Tool - install, remove and manage packages. Usage: apt [get|install|list|remove|update|search|repo|debug|test|reload] [package-name]";
+simpack.help = "SimPack - SimulaCLI Package Manager - install, remove and manage packages. Usage: simpack [get|install|list|remove|update|search|repo|debug|test|reload] [package-name]";

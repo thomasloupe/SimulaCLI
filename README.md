@@ -21,7 +21,7 @@ SimulaCLI is client-side, and root authentication exists as a soft wall to data.
 
 Below are the default commands in SimulaCLI:
 
-- `apt`: Advanced Package Tool - install, remove and manage packages
+- `simpack`: SimPack - SimulaCLI Package Manager - install, remove and manage packages
 - `cat`: Display the content of a file. Example: `cat readme.txt`
 - `cd`: Change to the specified directory. Example: `cd music`
 - `cd ..`: Change to the previous directory.
@@ -48,26 +48,26 @@ SimulaCLI features a comprehensive package management system that allows you to 
 
 ### Installing Packages
 
-Use the `apt` command to manage packages:
+Use the `simpack` command to manage packages:
 
 ```bash
 # Install a package
-apt get fortune
+simpack get fortune
 
 # Search for packages
-apt search calc
+simpack search calc
 
 # List installed packages
-apt list
+simpack list
 
 # Remove a package
-apt remove fortune
+simpack remove fortune
 
 # Update package lists
-apt update
+simpack update
 
-# Debug apt package status
-apt debug
+# Debug simpack package status
+simpack debug
 ```
 
 **Important:** After installing or removing packages, you must run `reboot` to restart the terminal and load the changes.
@@ -84,7 +84,7 @@ Official packages are maintained by SimulaCLI and provide core functionality:
 
 ```bash
 # Install official packages
-apt get fortune
+simpack get fortune
 reboot
 fortune
 ```
@@ -94,8 +94,8 @@ Community packages are contributed by users and offer creative, experimental fea
 
 ```bash
 # Install community packages
-apt get cowsay
-reboot (or try apt reload)
+simpack get cowsay
+reboot (or try simpack reload)
 cowsay MooOoOOooOOOO!
 ```
 
@@ -122,16 +122,16 @@ You can also add custom repositories:
 
 ```bash
 # List repositories
-apt repo list
+simpack repo list
 
 # Add a custom repository
-apt repo add myrepo https://raw.githubusercontent.com/username/repo/main/simpacks/ "My custom packages"
+simpack repo add myrepo https://raw.githubusercontent.com/username/repo/main/simpacks/ "My custom packages"
 
 # Remove a repository
-apt repo remove myrepo
+simpack repo remove myrepo
 
 # Reset to default repositories
-apt repo reset
+simpack repo reset
 ```
 
 ### Creating and Contributing Packages
@@ -241,12 +241,12 @@ export async function importCommands() {
     const commandFiles = [
       'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js',
       'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js',
-      'view.js', 'whoami.js', 'apt.js', 'commandNameHere.js'
+      'view.js', 'whoami.js', 'simpack.js', 'commandNameHere.js'
     ];
 ```
 
 ### Method 2: Package System (Recommended)
-The easier way is to create packages that can be installed via the `apt` system:
+The easier way is to create packages that can be installed via the `simpack` system:
 
 1. **Fork this repository**
 2. **Create your package** in `simpacks/community/yourcommand.js`
