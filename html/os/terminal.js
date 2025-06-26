@@ -210,26 +210,18 @@ async function playBootupSound() {
         // Register interval for potential interruption
         registerInterval(interval);
 
-        // Check background audio setting before playing
         if (getSetting('drivehum')) {
             backgroundAudio.play().catch(error => console.log('Bootup sound play failed:', error));
-            backgroundAudio.onended = async () => {
-                clearInterval(interval);
-                bootingMessage.remove();
-                await displayMotd(); // Show MOTD after boot animation
-                resolve();
-            };
-        } else {
-            // If audio is disabled, just show the animation for a shorter time
-            const timeout = setTimeout(async () => {
-                clearInterval(interval);
-                bootingMessage.remove();
-                await displayMotd(); // Show MOTD after boot animation
-                resolve();
-            }, 3000); // 3 second animation without audio
-
-            registerTimeout(timeout);
         }
+
+        const timeout = setTimeout(async () => {
+            clearInterval(interval);
+            bootingMessage.remove();
+            await displayMotd(); // Show MOTD after boot animation
+            resolve();
+        }, 4000); // 4 second boot animation
+
+        registerTimeout(timeout);
     });
 }
 
