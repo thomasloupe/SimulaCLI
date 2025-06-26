@@ -8,7 +8,7 @@ SimulaCLI is a customizable, modular, simulated Linux terminal created in JavaSc
 
 ## Live Demo
 
-![SimulaCLI](https://simulacli.com)
+[SimulaCLI](https://simulacli.com)
 
 ## Introduction
 
