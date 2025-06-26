@@ -16,7 +16,7 @@ SimulaCLI simulates a Linux terminal environment where users can interact with a
 
 ## Getting Started
 
-To get started, simply clone this repository and move the contents inside the `html` folder into your website's home directory. Navigate to the `index.html` file in your web browser. This will launch the simulated terminal environment where you can start interacting with the simulated file system.
+To get started, simply clone this repository and move the contents inside the `html`, `public_html`, or `domainnamehere.tld` folder into your website's home directory, then navigate to your site to launch SimulaCLI.
 
 NOTE: The default root password is `hacktheplanet`. You can generate your own hash by visiting the `generaterootpassword.html` page.
 IMPORTANT: !DO NOT USE THE ROOT PASSWORD TO PROTECT SENSITIVE DATA!
