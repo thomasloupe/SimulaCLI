@@ -1,5 +1,6 @@
 import { executeCommand, importCommands } from './commands.js';
 import { isAuthenticatedAsRoot, isAuthenticationRequired, verifyRootPassword } from './superuser.js';
+import { getSetting } from './bin/commands/termconfig.js';
 
 const terminal = document.getElementById('terminal');
 const commandInput = document.getElementById('commandInput');
@@ -32,7 +33,10 @@ async function initialize() {
 
     backgroundAudio.addEventListener('ended', () => {
         backgroundAudioPlayed = true;
-        nextAudio.play().catch(error => console.log('Next audio play failed:', error));
+        // Check setting before playing next audio
+        if (getSetting('drivehum')) {
+            nextAudio.play().catch(error => console.log('Next audio play failed:', error));
+        }
     });
 }
 
@@ -50,14 +54,19 @@ async function handleTerminalClick(event) {
 async function activateTerminal(playBootSound = false) {
     if (!terminalActivated) {
         terminalActivated = true;
-        
-        if (playBootSound) {
+
+        // Check bootup simulation setting
+        if (playBootSound && getSetting('bootupsim')) {
             await playBootupSound();
+        } else if (playBootSound && !getSetting('bootupsim')) {
+            // Skip bootup simulation but still show MOTD
+            await displayMotd();
+        } else {
+            await displayMotd();
         }
 
-        await displayMotd();
-        
-        if (!backgroundAudioPlayed) {
+        // Check background audio setting
+        if (!backgroundAudioPlayed && getSetting('drivehum')) {
             backgroundAudio.play().catch(error => console.log('Audio play failed:', error));
         }
 
@@ -85,18 +94,32 @@ async function playBootupSound() {
             }
         }, 200);
 
-        backgroundAudio.play().catch(error => console.log('Bootup sound play failed:', error));
-        backgroundAudio.onended = () => {
-            clearInterval(interval);
-            bootingMessage.remove();
-            resolve();
-        };
+        // Check background audio setting before playing
+        if (getSetting('drivehum')) {
+            backgroundAudio.play().catch(error => console.log('Bootup sound play failed:', error));
+            backgroundAudio.onended = () => {
+                clearInterval(interval);
+                bootingMessage.remove();
+                resolve();
+            };
+        } else {
+            // If audio is disabled, just show the animation for a shorter time
+            setTimeout(() => {
+                clearInterval(interval);
+                bootingMessage.remove();
+                resolve();
+            }, 3000); // 3 second animation without audio
+        }
     });
 }
 
 async function handleCommand(event) {
     if (event.key === 'Enter') {
-        playReturnSound();
+        // Check keystroke setting before playing sound
+        if (getSetting('keystrokes')) {
+            playReturnSound();
+        }
+
         const input = event.target.value.trim();
         terminal.innerHTML += `<div>> ${input}</div>`;
         event.target.value = '';
@@ -129,8 +152,11 @@ export async function displayMotd() {
 }
 
 export function playReturnSound() {
-    returnSound.currentTime = 0;
-    returnSound.play().catch(error => console.log('Return sound play failed:', error));
+    // Only play if keystrokes setting is enabled
+    if (getSetting('keystrokes')) {
+        returnSound.currentTime = 0;
+        returnSound.play().catch(error => console.log('Return sound play failed:', error));
+    }
 }
 
 export function playShutdownSound() {
@@ -157,7 +183,6 @@ window.addEventListener('exitCommandTriggered', () => {
         terminal.innerHTML = "<div>System is shut down. Click to start.</div>";
         commandInput.disabled = true;
         terminalActivated = false;
-        // The filesystem has already been reset to root by the exit/shutdown command
     };
 });
 

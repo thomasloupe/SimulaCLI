@@ -1,14 +1,35 @@
 import { displayMotd, playReturnSound, playShutdownSound, stopAllAudio, nextAudio, returnSound, backgroundAudio } from '../../terminal.js';
 import { resetToRoot } from '../filesystem.js';
+import { getSetting } from './termconfig.js';
 
 export default async function reboot() {
   const terminal = document.getElementById('terminal');
   const commandInput = document.getElementById('commandInput');
-  
+
   // Disable the input field
   commandInput.disabled = true;
+
+  // Check if reboot simulation is enabled
+  if (!getSetting('rebootsim')) {
+    // Skip simulation, do immediate reboot
+    terminal.innerHTML = "<div>System rebooting...</div>";
+
+    // Brief delay for user feedback
+    setTimeout(async () => {
+      terminal.innerHTML = ""; // Clear the terminal
+      resetToRoot(); // Reset to root directory
+      await displayMotd();
+      // Enable the input field after reboot process is complete
+      commandInput.disabled = false;
+      commandInput.focus();
+    }, 1000);
+
+    return '';
+  }
+
+  // Full reboot simulation (original behavior)
   terminal.innerHTML = "<div>Broadcast message from systemd-journald@simulacli</div>";
-  
+
   function getRandomDelay(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
@@ -28,8 +49,24 @@ export default async function reboot() {
     { message: "Deactivating swap...", delay: getRandomDelay(minDelay, maxDelay) },
     { message: "Detaching loop devices...", delay: getRandomDelay(minDelay, maxDelay) },
     { message: "Shutting down kernel logger...", delay: getRandomDelay(minDelay, maxDelay) },
-    { message: "Powering off.", delay: powerOffDelay, sound: () => { stopAllAudio(); playShutdownSound(); } },
-    { message: "Booting up...", delay: bootingUpDelay, sound: () => backgroundAudio.play() },
+    {
+      message: "Powering off.",
+      delay: powerOffDelay,
+      sound: () => {
+        stopAllAudio();
+        playShutdownSound();
+      }
+    },
+    {
+      message: "Booting up...",
+      delay: bootingUpDelay,
+      sound: () => {
+        // Only play background audio if drivehum setting is enabled
+        if (getSetting('drivehum')) {
+          backgroundAudio.play();
+        }
+      }
+    },
     { message: "Loading initial ramdisk...", delay: getRandomDelay(minDelay, maxDelay) },
     { message: "Loading kernel modules...", delay: getRandomDelay(minDelay, maxDelay) },
     { message: "Initializing hardware...", delay: getRandomDelay(minDelay, maxDelay) },
@@ -50,7 +87,7 @@ export default async function reboot() {
   ];
 
   let totalDelay = 0;
-  
+
   for (const step of steps) {
     totalDelay += step.delay;
     setTimeout(() => {
@@ -59,7 +96,10 @@ export default async function reboot() {
       if (step.sound) {
         step.sound();
       } else if (step.delay !== 4000) {
-        playReturnSound();
+        // Only play return sound if keystrokes setting is enabled
+        if (getSetting('keystrokes')) {
+          playReturnSound();
+        }
       }
     }, totalDelay);
   }
@@ -72,7 +112,7 @@ export default async function reboot() {
     commandInput.disabled = false;
     commandInput.focus();
   }, totalDelay + 4000);
-  
+
   return '';
 }
 
