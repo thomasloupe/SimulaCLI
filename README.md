@@ -124,7 +124,7 @@ simpack update
 simpack debug
 ```
 
-**Important:** After installing or removing packages, you must run `reboot` to restart the terminal and load the changes.
+**Important:** After installing or removing packages, you must run either `simpack reload` or `reboot` to restart the terminal and load the changes.
 
 ### Package Categories
 
