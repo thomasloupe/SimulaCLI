@@ -1,5 +1,6 @@
 import { isAuthenticatedAsRoot } from './superuser.js';
 import { fileSystem, currentPath, currentDirectory, commandHistory, loadFileSystem } from './bin/filesystem.js';
+import { hasOperators, executeWithOperators } from './operators.js';
 // Import repositories to ensure it's initialized
 import './repositories.js';
 
@@ -46,9 +47,9 @@ export async function importCommands() {
 
     // Load built-in commands
     const commandFiles = [
-      'apt.js', 'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js',
+      'apt.js', 'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'grep.js', 'help.js', 'history.js', 'ifconfig.js',
       'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js',
-      'termconfig.js', 'view.js', 'whoami.js'
+      'sleep.js', 'termconfig.js', 'view.js', 'wc.js', 'whoami.js'
     ];
 
     console.log('[COMMANDS] Loading built-in commands...');
@@ -153,14 +154,26 @@ async function loadInstalledPackages() {
 export async function executeCommand(input) {
   console.log('[EXEC] Executing command:', input);
   commandHistory.push(input);
+
+  // Check if the input contains operators
+  if (hasOperators(input)) {
+    console.log('[OPERATORS] Detected operators in command, using operators system');
+    try {
+      return await executeWithOperators(input);
+    } catch (error) {
+      console.error('[OPERATORS] Error in operators system:', error);
+      return `Error processing command with operators: ${error.message}`;
+    }
+  }
+
+  // Normal single command execution
   const [command, ...args] = input.split(' ');
 
   const terminal = document.getElementById('terminal');
 
   if (Object.keys(commands).length === 0) {
     console.error('[ERROR] Commands not loaded yet.');
-    terminal.innerHTML += `<div>Commands not loaded yet. Please try again.</div>`;
-    return;
+    return 'Commands not loaded yet. Please try again.';
   }
 
   let targetPath = args[0] || "";
@@ -169,21 +182,18 @@ export async function executeCommand(input) {
   if (commands[command]) {
     try {
       if (target && target.superuser && !isAuthenticatedAsRoot) {
-        terminal.innerHTML += "<div>su: Authentication required</div>";
-        return;
+        return "su: Authentication required";
       }
       console.log('[EXEC] Found command:', command + ', executing...');
       const response = await commands[command](...args);
-      if (response !== undefined) {
-        terminal.innerHTML += `<div>${response}</div>`;
-      }
+      return response;
     } catch (error) {
       console.error('[ERROR] Error executing', command + ':', error);
-      terminal.innerHTML += `<div>Error executing ${command}: ${error.message}</div>`;
+      return `Error executing ${command}: ${error.message}`;
     }
   } else {
     console.log('[FAIL] Command not found:', command + '. Available commands:', Object.keys(commands));
-    terminal.innerHTML += `<div>${command}: command not found</div>`;
+    return `${command}: command not found`;
   }
 }
 

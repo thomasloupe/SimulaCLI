@@ -1,4 +1,4 @@
-import { displayMotd, playReturnSound, playShutdownSound, stopAllAudio, nextAudio, returnSound, backgroundAudio } from '../../terminal.js';
+import { displayMotd, playReturnSound, playShutdownSound, stopAllAudio, nextAudio, returnSound, backgroundAudio, registerTimeout } from '../../terminal.js';
 import { resetToRoot } from '../filesystem.js';
 
 // Safe getter for settings that handles when termconfig isn't loaded yet
@@ -26,7 +26,7 @@ export default async function reboot() {
   const terminal = document.getElementById('terminal');
   const commandInput = document.getElementById('commandInput');
 
-  // Disable the input field
+  // Disable the input field (like real Linux)
   commandInput.disabled = true;
 
   // Check if reboot simulation is enabled
@@ -35,7 +35,7 @@ export default async function reboot() {
     terminal.innerHTML = "<div>System rebooting...</div>";
 
     // Brief delay for user feedback
-    setTimeout(async () => {
+    const timeout = setTimeout(async () => {
       terminal.innerHTML = ""; // Clear the terminal
       resetToRoot(); // Reset to root directory
       await displayMotd();
@@ -44,6 +44,7 @@ export default async function reboot() {
       commandInput.focus();
     }, 1000);
 
+    registerTimeout(timeout);
     return '';
   }
 
@@ -110,29 +111,47 @@ export default async function reboot() {
 
   for (const step of steps) {
     totalDelay += step.delay;
-    setTimeout(() => {
-      terminal.innerHTML += `<div>${step.message}</div>`;
-      scrollToBottom();
-      if (step.sound) {
-        step.sound();
-      } else if (step.delay !== 4000) {
-        // Only play return sound if keystrokes setting is enabled
-        if (getSetting('keystrokes')) {
-          playReturnSound();
+    const timeout = setTimeout(() => {
+      // Check if we should still be running (not interrupted)
+      try {
+        terminal.innerHTML += `<div>${step.message}</div>`;
+        scrollToBottom();
+        if (step.sound) {
+          step.sound();
+        } else if (step.delay !== 4000) {
+          // Only play return sound if keystrokes setting is enabled
+          if (getSetting('keystrokes')) {
+            playReturnSound();
+          }
         }
+      } catch (error) {
+        // Timeout was probably cleared due to interrupt
+        console.log('[REBOOT] Step interrupted:', step.message);
       }
     }, totalDelay);
+
+    // Register each timeout for potential interruption
+    registerTimeout(timeout);
   }
 
-  setTimeout(async () => {
-    terminal.innerHTML = ""; // Clear the terminal
-    resetToRoot(); // Reset to root directory
-    await displayMotd();
-    // Enable the input field after reboot process is complete
-    commandInput.disabled = false;
-    commandInput.focus();
+  // Final completion timeout
+  const finalTimeout = setTimeout(async () => {
+    try {
+      terminal.innerHTML = ""; // Clear the terminal
+      resetToRoot(); // Reset to root directory
+      await displayMotd();
+      // Enable the input field after reboot process is complete
+      commandInput.disabled = false;
+      commandInput.focus();
+    } catch (error) {
+      // Reboot was interrupted
+      console.log('[REBOOT] Final step interrupted');
+      commandInput.disabled = false;
+      commandInput.focus();
+    }
   }, totalDelay + 4000);
 
+  registerTimeout(finalTimeout);
   return '';
 }
 
@@ -143,4 +162,4 @@ function scrollToBottom() {
   }, 100);
 }
 
-reboot.help = "Reboot the Operating System.";
+reboot.help = "Reboot the Operating System. Press CTRL+C to interrupt.";

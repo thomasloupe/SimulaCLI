@@ -11,6 +11,12 @@ export const shutdownSound = document.getElementById('shutdownSound');
 let backgroundAudioPlayed = false;
 let terminalActivated = false;
 
+// Command execution state
+let isCommandRunning = false;
+let currentCommandAbortController = null;
+let currentTimeouts = [];
+let currentIntervals = [];
+
 // Safe getter for settings that handles when termconfig isn't loaded yet
 function getSetting(key) {
   try {
@@ -32,9 +38,76 @@ function getSetting(key) {
   }
 }
 
+// Register timeout/interval for cleanup on interrupt
+export function registerTimeout(timeoutId) {
+  currentTimeouts.push(timeoutId);
+  return timeoutId;
+}
+
+export function registerInterval(intervalId) {
+  currentIntervals.push(intervalId);
+  return intervalId;
+}
+
+// Clear all running timeouts and intervals
+function clearAllTimers() {
+  currentTimeouts.forEach(id => clearTimeout(id));
+  currentIntervals.forEach(id => clearInterval(id));
+  currentTimeouts = [];
+  currentIntervals = [];
+}
+
+// Handle CTRL+C interrupt
+function handleInterrupt() {
+  const commandInput = document.getElementById('commandInput');
+
+  if (!isCommandRunning) {
+    // No command running, just show ^C and new prompt
+    const promptSettings = window.terminalPromptSettings || { color: 'lime', size: 1 };
+    const promptStyle = `color: ${promptSettings.color}; font-size: ${16 * promptSettings.size}px; font-weight: bold;`;
+    terminal.innerHTML += `<div><span style="${promptStyle}">></span> ^C</div>`;
+    commandInput.value = '';
+    return;
+  }
+
+  // Command is running, interrupt it
+  console.log('[INTERRUPT] CTRL+C pressed, interrupting command...');
+
+  // Show ^C in terminal
+  terminal.innerHTML += `<div>^C</div>`;
+
+  // Clear any running timers
+  clearAllTimers();
+
+  // Abort any ongoing command if abort controller exists
+  if (currentCommandAbortController) {
+    currentCommandAbortController.abort();
+  }
+
+  // Reset command state
+  isCommandRunning = false;
+  currentCommandAbortController = null;
+
+  // Re-enable input (in case it was disabled by sleep or other commands)
+  commandInput.disabled = false;
+  commandInput.value = '';
+  commandInput.focus();
+
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
 async function initialize() {
     await importCommands();
     console.log('Commands ready for execution');
+
+    // Apply visual settings from termconfig
+    try {
+      const { applyVisualSettings } = await import('./bin/commands/termconfig.js');
+      applyVisualSettings();
+      console.log('[VISUAL] Applied terminal visual settings');
+    } catch (error) {
+      console.log('[VISUAL] Could not load visual settings (termconfig not ready)');
+    }
 
     if (!localStorage.getItem('terminalShutdown')) {
         localStorage.setItem('terminalShutdown', 'true');
@@ -50,6 +123,28 @@ async function initialize() {
 
     terminal.addEventListener('click', handleTerminalClick);
     commandInput.addEventListener('keydown', handleCommand);
+
+    // Add global keydown listener for CTRL+C
+    document.addEventListener('keydown', (event) => {
+        // Check for CTRL+C (Ctrl + C)
+        if (event.ctrlKey && event.key.toLowerCase() === 'c') {
+            // Check if there's text selected
+            const selection = window.getSelection();
+            const selectedText = selection.toString();
+
+            if (selectedText && selectedText.trim().length > 0) {
+                // Text is selected, allow normal copy behavior
+                console.log('[COPY] Text selected, allowing copy operation');
+                // Don't prevent default - let browser handle copy
+                return;
+            }
+
+            // No text selected, handle as interrupt
+            event.preventDefault();
+            event.stopPropagation();
+            handleInterrupt();
+        }
+    });
 
     backgroundAudio.addEventListener('ended', () => {
         backgroundAudioPlayed = true;
@@ -112,6 +207,9 @@ async function playBootupSound() {
             }
         }, 200);
 
+        // Register interval for potential interruption
+        registerInterval(interval);
+
         // Check background audio setting before playing
         if (getSetting('drivehum')) {
             backgroundAudio.play().catch(error => console.log('Bootup sound play failed:', error));
@@ -123,12 +221,14 @@ async function playBootupSound() {
             };
         } else {
             // If audio is disabled, just show the animation for a shorter time
-            setTimeout(async () => {
+            const timeout = setTimeout(async () => {
                 clearInterval(interval);
                 bootingMessage.remove();
                 await displayMotd(); // Show MOTD after boot animation
                 resolve();
             }, 3000); // 3 second animation without audio
+
+            registerTimeout(timeout);
         }
     });
 }
@@ -141,15 +241,48 @@ async function handleCommand(event) {
         }
 
         const input = event.target.value.trim();
-        terminal.innerHTML += `<div>> ${input}</div>`;
+
+        // Get prompt styling from termconfig
+        const promptSettings = window.terminalPromptSettings || { color: 'lime', size: 1 };
+        const promptStyle = `color: ${promptSettings.color}; font-size: ${16 * promptSettings.size}px; font-weight: bold;`;
+
+        terminal.innerHTML += `<div><span style="${promptStyle}">></span> ${input}</div>`;
         event.target.value = '';
 
         if (input !== '') {
-            const result = await executeCommand(input);
-            if (result && result.action === 'clear') {
-                terminal.innerHTML = '';
-            } else if (result !== undefined) {
-                terminal.innerHTML += `<div>${result}</div>`;
+            // Set command running state
+            isCommandRunning = true;
+            currentCommandAbortController = new AbortController();
+
+            try {
+                const result = await executeCommand(input);
+
+                // Only process result if command wasn't interrupted
+                if (isCommandRunning) {
+                    if (result && result.action === 'clear') {
+                        terminal.innerHTML = '';
+                    } else if (result !== undefined && result !== '') {
+                        terminal.innerHTML += `<div>${result}</div>`;
+                    }
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('[INTERRUPT] Command was aborted');
+                } else {
+                    console.error('[ERROR] Command execution error:', error);
+                    if (isCommandRunning) {
+                        terminal.innerHTML += `<div>Error: ${error.message}</div>`;
+                    }
+                }
+            } finally {
+                // Reset command state
+                isCommandRunning = false;
+                currentCommandAbortController = null;
+                clearAllTimers();
+
+                // Ensure input is enabled
+                commandInput.disabled = false;
+                commandInput.focus();
             }
         }
 
@@ -193,6 +326,18 @@ export function stopAllAudio() {
     returnSound.currentTime = 0;
     shutdownSound.pause();
     shutdownSound.currentTime = 0;
+}
+
+// Export the command state for other modules to check
+export function isCommandCurrentlyRunning() {
+    return isCommandRunning;
+}
+
+// Function for commands to check if they should abort
+export function checkForAbort() {
+    if (currentCommandAbortController && currentCommandAbortController.signal.aborted) {
+        throw new Error('Command aborted');
+    }
 }
 
 window.addEventListener('exitCommandTriggered', () => {
