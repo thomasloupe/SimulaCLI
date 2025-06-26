@@ -137,7 +137,7 @@ Official packages are maintained by SimulaCLI and provide core functionality:
 ```bash
 # Install official packages
 simpack get fortune
-reboot
+simpack reload
 fortune
 ```
 
@@ -148,7 +148,7 @@ Community packages are contributed by users and offer creative, experimental fea
 ```bash
 # Install community packages
 simpack get cowsay
-reboot (or try simpack reload)
+simpack reload
 cowsay MooOoOOooOOOO!
 ```
 
