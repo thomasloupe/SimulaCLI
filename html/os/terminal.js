@@ -289,11 +289,29 @@ export async function displayMotd() {
             throw new Error('Failed to load MOTD');
         }
         const motdContent = await response.text();
-        terminal.innerHTML += `<pre>${motdContent}</pre>`;
+
+        // Convert URLs to clickable links
+        const contentWithLinks = makeUrlsClickable(motdContent);
+
+        terminal.innerHTML += `<pre>${contentWithLinks}</pre>`;
     } catch (error) {
         console.error('Error loading MOTD:', error);
         terminal.innerHTML += "<div>Error: Could not load MOTD</div>";
     }
+}
+
+function makeUrlsClickable(text) {
+    // Regular expression to match URLs (http, https, or just domain names)
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g;
+
+    return text.replace(urlRegex, (url) => {
+        let href = url;
+        if (!url.match(/^https?:\/\//)) {
+            href = 'https://' + url;
+        }
+
+        return `<a href="${href}" target="_blank" style="color: #0ff; text-decoration: underline; cursor: pointer;">${url}</a>`;
+    });
 }
 
 export function playReturnSound() {
