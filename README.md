@@ -297,15 +297,15 @@ Here's an example hard drive setup in JSON format:
 
 3. In the `/os/` folder, open `commands.js` and add your `commandNameHere.js` to the `importCommands()` function:
 
-```javascript
-export async function importCommands() {
-  try {
-    const commandFiles = [
-      'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js',
-      'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js',
-      'view.js', 'whoami.js', 'simpack.js', 'commandNameHere.js'
-    ];
-```
+    ```javascript
+    export async function importCommands() {
+      try {
+        const commandFiles = [
+          'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js',
+          'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js',
+          'view.js', 'whoami.js', 'simpack.js', 'commandNameHere.js'
+        ];
+    ```
 
 ### Method 2: Package System (Recommended)
 
