@@ -1,9 +1,16 @@
 import { currentDirectory } from '../filesystem.js';
 import { downloadFile } from '../helpers.js';
+import { checkAccess } from '../../superuser.js';
 
 export default async function scp(fileName) {
   const file = currentDirectory.children && currentDirectory.children[fileName];
   if (file && file.type === "file" && file.downloadable) {
+    // Check file access permissions
+    const accessCheck = checkAccess(file);
+    if (!accessCheck.hasAccess) {
+      return `scp: ${fileName}: ${accessCheck.message}`;
+    }
+
     const url = file.goto && file.goto !== "" ? file.goto : `os/downloads/${fileName}`;
     if (file.goto && file.goto !== "") {
       window.open(url, '_blank');

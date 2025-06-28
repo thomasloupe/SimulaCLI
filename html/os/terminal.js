@@ -1,5 +1,4 @@
 import { executeCommand, importCommands } from './commands.js';
-import { isAuthenticatedAsRoot, isAuthenticationRequired, verifyRootPassword } from './superuser.js';
 import { commandHistory } from './bin/filesystem.js';
 import { autoComplete } from './autocomplete.js';
 
@@ -109,7 +108,7 @@ function clearAllTimers() {
 }
 
 // Handle CTRL+C interrupt
-function handleInterrupt() {
+async function handleInterrupt() {
   const commandInput = document.getElementById('commandInput');
 
   // Exit reverse search if active
@@ -120,9 +119,23 @@ function handleInterrupt() {
 
   if (!isCommandRunning) {
     // No command running, just show ^C and new prompt
-    const promptSettings = window.terminalPromptSettings || { color: 'lime', size: 1 };
-    const promptStyle = `color: ${promptSettings.color}; font-size: ${16 * promptSettings.size}px; font-weight: bold;`;
-    terminal.innerHTML += `<div><span style="${promptStyle}">></span> ^C</div>`;
+    try {
+      const { getCurrentUser } = await import('./superuser.js');
+      const currentUser = getCurrentUser();
+      const promptChar = currentUser === 'root' ? '#' : '$';
+      const promptText = `${currentUser}@simulacli:~${promptChar}`;
+
+      const promptSettings = window.terminalPromptSettings || { color: 'lime', size: 1 };
+      const promptStyle = `color: ${promptSettings.color}; font-size: ${16 * promptSettings.size}px; font-weight: bold;`;
+
+      terminal.innerHTML += `<div><span style="${promptStyle}">${promptText}</span> ^C</div>`;
+    } catch (error) {
+      // Fallback to simple prompt if superuser module not loaded
+      const promptSettings = window.terminalPromptSettings || { color: 'lime', size: 1 };
+      const promptStyle = `color: ${promptSettings.color}; font-size: ${16 * promptSettings.size}px; font-weight: bold;`;
+      terminal.innerHTML += `<div><span style="${promptStyle}">simulaclient@simulacli:~$</span> ^C</div>`;
+    }
+
     commandInput.value = '';
     return;
   }
@@ -505,6 +518,14 @@ async function handleCommand(event) {
     }
 
     if (event.key === 'Enter') {
+        // Check if any password prompts are active first
+        if (window.suPasswordPrompt?.active ||
+            window.sudoPasswordPrompt?.active ||
+            window.passwdState?.active) {
+            // Let the specific password handlers deal with this, don't process as normal command
+            return;
+        }
+
         // Check keystroke setting before playing sound
         if (getSetting('keystrokes')) {
             playReturnSound();
@@ -512,11 +533,26 @@ async function handleCommand(event) {
 
         const input = event.target.value.trim();
 
-        // Get prompt styling from termconfig
-        const promptSettings = window.terminalPromptSettings || { color: 'lime', size: 1 };
-        const promptStyle = `color: ${promptSettings.color}; font-size: ${16 * promptSettings.size}px; font-weight: bold;`;
+        // Get current user and format prompt
+        try {
+            const { getCurrentUser } = await import('./superuser.js');
+            const currentUser = getCurrentUser();
+            const promptChar = currentUser === 'root' ? '#' : '$';
+            const promptText = `${currentUser}@simulacli:~${promptChar}`;
 
-        terminal.innerHTML += `<div><span style="${promptStyle}">></span> ${input}</div>`;
+            // Get prompt styling from termconfig
+            const promptSettings = window.terminalPromptSettings || { color: 'lime', size: 1 };
+            const promptStyle = `color: ${promptSettings.color}; font-size: ${16 * promptSettings.size}px; font-weight: bold;`;
+
+            terminal.innerHTML += `<div><span style="${promptStyle}">${promptText}</span> ${input}</div>`;
+        } catch (error) {
+            // Fallback to simple prompt if superuser module not loaded
+            const promptSettings = window.terminalPromptSettings || { color: 'lime', size: 1 };
+            const promptStyle = `color: ${promptSettings.color}; font-size: ${16 * promptSettings.size}px; font-weight: bold;`;
+
+            terminal.innerHTML += `<div><span style="${promptStyle}">simulaclient@simulacli:~$</span> ${input}</div>`;
+        }
+
         event.target.value = '';
 
         // Reset history navigation

@@ -244,6 +244,15 @@ async function writeToFile(filename, content, append = false) {
     newContent = content;
   }
 
+  // Get current user for file ownership
+  let currentUser = 'simulaclient';
+  try {
+    const { getCurrentUser } = await import('./superuser.js');
+    currentUser = getCurrentUser();
+  } catch (error) {
+    console.log('[OPERATORS] Could not get current user, using default');
+  }
+
   // Create or update the file in the current directory
   if (!currentDirectory.children) {
     currentDirectory.children = {};
@@ -251,7 +260,7 @@ async function writeToFile(filename, content, append = false) {
 
   currentDirectory.children[filename] = {
     type: 'file',
-    owner: 'user',
+    owner: currentUser,
     permissions: 'rw-',
     downloadable: true,
     viewable: true,

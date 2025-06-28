@@ -1,4 +1,4 @@
-import { isAuthenticatedAsRoot } from './superuser.js';
+import { checkAccess } from './superuser.js';
 import { fileSystem, currentPath, currentDirectory, commandHistory, loadFileSystem } from './bin/filesystem.js';
 import { hasOperators, executeWithOperators } from './operators.js';
 // Import repositories to ensure it's initialized
@@ -45,11 +45,11 @@ export async function importCommands() {
     // Initialize package storage first
     initializePackageStorage();
 
-    // Load built-in commands
+    // Load built-in commands (including new authentication commands)
     const commandFiles = [
       'simpack.js', 'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'grep.js', 'help.js', 'history.js', 'ifconfig.js',
       'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js',
-      'sleep.js', 'termconfig.js', 'view.js', 'wc.js', 'whoami.js'
+      'sleep.js', 'termconfig.js', 'view.js', 'wc.js', 'whoami.js', 'su.js', 'sudo.js', 'passwd.js', 'logout.js'
     ];
 
     console.log('[COMMANDS] Loading built-in commands...');
@@ -181,9 +181,14 @@ export async function executeCommand(input) {
 
   if (commands[command]) {
     try {
-      if (target && target.superuser && !isAuthenticatedAsRoot) {
-        return "su: Authentication required";
+      // Check file access permissions if targeting a specific file
+      if (target && target.superuser) {
+        const accessCheck = checkAccess(target);
+        if (!accessCheck.hasAccess) {
+          return accessCheck.message;
+        }
       }
+
       console.log('[EXEC] Found command:', command + ', executing...');
       const response = await commands[command](...args);
       return response;

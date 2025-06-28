@@ -1,0 +1,175 @@
+import { executeSudo, getCurrentUser, isCurrentlyRoot } from '../../superuser.js';
+
+export default async function sudo(...args) {
+  if (args.length === 0) {
+    return 'sudo: no command specified<br>Usage: sudo [command] [arguments...]';
+  }
+
+  // Check if already root
+  if (isCurrentlyRoot()) {
+    // Already root, just execute the command directly
+    const { executeCommand } = await import('../../commands.js');
+    const commandLine = args.join(' ');
+    return await executeCommand(commandLine);
+  }
+
+  const command = args[0];
+  const commandArgs = args.slice(1);
+
+  // Prompt for password
+  return new Promise((resolve) => {
+    // Set up interactive password prompt
+    window.sudoPasswordPrompt = {
+      active: true,
+      resolve: resolve,
+      command: command,
+      args: commandArgs,
+      attempts: 0,
+      maxAttempts: 3
+    };
+
+    // Disable normal command input
+    const commandInput = document.getElementById('commandInput');
+    if (commandInput) {
+      commandInput.type = 'password';
+      commandInput.placeholder = '[sudo] password for ' + getCurrentUser() + ': ';
+      commandInput.value = '';
+    }
+
+    // Set up event listener for password input
+    setupSudoPasswordHandler();
+
+    // Show password prompt
+    const terminal = document.getElementById('terminal');
+    if (terminal) {
+      terminal.innerHTML += `<div>[sudo] password for ${getCurrentUser()}: </div>`;
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+  });
+}
+
+function setupSudoPasswordHandler() {
+  // Remove any existing listener
+  if (window.sudoPasswordHandler) {
+    document.removeEventListener('keydown', window.sudoPasswordHandler);
+  }
+
+  window.sudoPasswordHandler = async function(event) {
+    if (!window.sudoPasswordPrompt || !window.sudoPasswordPrompt.active) {
+      return;
+    }
+
+    const commandInput = document.getElementById('commandInput');
+
+    // Handle Ctrl+C to cancel
+    if (event.ctrlKey && event.key.toLowerCase() === 'c') {
+      event.preventDefault();
+
+      const terminal = document.getElementById('terminal');
+      terminal.innerHTML += '<div>^C</div>';
+      terminal.innerHTML += '<div>sudo: Operation cancelled</div>';
+      terminal.scrollTop = terminal.scrollHeight;
+
+      // Restore normal input
+      commandInput.type = 'text';
+      commandInput.placeholder = 'Type commands here...';
+      commandInput.value = '';
+      commandInput.focus();
+
+      // Clean up
+      window.sudoPasswordPrompt.active = false;
+      window.sudoPasswordPrompt.resolve('sudo: Operation cancelled');
+      document.removeEventListener('keydown', window.sudoPasswordHandler);
+      window.sudoPasswordHandler = null;
+
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+
+      const password = commandInput.value;
+      commandInput.value = '';
+
+      try {
+        const result = await executeSudo(
+          password,
+          window.sudoPasswordPrompt.command,
+          window.sudoPasswordPrompt.args
+        );
+
+        const terminal = document.getElementById('terminal');
+
+        if (result.success) {
+          // Restore normal input
+          commandInput.type = 'text';
+          commandInput.placeholder = 'Type commands here...';
+
+          window.sudoPasswordPrompt.resolve(result.output || 'Command executed successfully');
+        } else {
+          window.sudoPasswordPrompt.attempts++;
+
+          // Check for specific password error vs command error
+          if (result.message.includes('Incorrect password') || result.message.includes('password')) {
+            terminal.innerHTML += '<div>Sorry, try again.</div>';
+
+            if (window.sudoPasswordPrompt.attempts >= window.sudoPasswordPrompt.maxAttempts) {
+              terminal.innerHTML += '<div>sudo: 3 incorrect password attempts</div>';
+
+              // Restore normal input
+              commandInput.type = 'text';
+              commandInput.placeholder = 'Type commands here...';
+
+              window.sudoPasswordPrompt.resolve('sudo: Authentication failed');
+            } else {
+              terminal.innerHTML += `<div>[sudo] password for ${getCurrentUser()}: </div>`;
+              commandInput.placeholder = '[sudo] password for ' + getCurrentUser() + ': ';
+              // Keep password input mode for retry
+            }
+          } else {
+            // Command execution error, not authentication error
+            terminal.innerHTML += `<div>sudo: ${result.message}</div>`;
+
+            // Restore normal input
+            commandInput.type = 'text';
+            commandInput.placeholder = 'Type commands here...';
+
+            window.sudoPasswordPrompt.resolve(`sudo: ${result.message}`);
+          }
+        }
+
+        terminal.scrollTop = terminal.scrollHeight;
+        commandInput.focus();
+
+        if (result.success ||
+            window.sudoPasswordPrompt.attempts >= window.sudoPasswordPrompt.maxAttempts ||
+            !result.message.includes('password')) {
+          // Clean up
+          window.sudoPasswordPrompt.active = false;
+          document.removeEventListener('keydown', window.sudoPasswordHandler);
+          window.sudoPasswordHandler = null;
+        }
+
+      } catch (error) {
+        const terminal = document.getElementById('terminal');
+        terminal.innerHTML += `<div>sudo: Error - ${error.message}</div>`;
+        terminal.scrollTop = terminal.scrollHeight;
+
+        // Restore normal input
+        commandInput.type = 'text';
+        commandInput.placeholder = 'Type commands here...';
+
+        window.sudoPasswordPrompt.resolve(`sudo: Error - ${error.message}`);
+
+        // Clean up
+        window.sudoPasswordPrompt.active = false;
+        document.removeEventListener('keydown', window.sudoPasswordHandler);
+        window.sudoPasswordHandler = null;
+      }
+    }
+  };
+
+  document.addEventListener('keydown', window.sudoPasswordHandler);
+}
+
+sudo.help = "Execute commands as another user. Usage: sudo [command] [arguments...]";
