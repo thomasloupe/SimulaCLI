@@ -18,38 +18,122 @@ SimulaCLI simulates a Linux terminal environment where users can interact with a
 
 To get started, simply clone this repository and move the contents inside the `html`, `public_html`, or `domainnamehere.tld` folder into your website's home directory, then navigate to your site to launch SimulaCLI.
 
-NOTE: The default root password is `hacktheplanet`. You can generate your own hash by visiting the `generaterootpassword.html` page.
-IMPORTANT: !DO NOT USE THE ROOT PASSWORD TO PROTECT SENSITIVE DATA!
-SimulaCLI is client-side, and root authentication exists as a soft wall to data.
+## Authentication System
+
+SimulaCLI features a realistic multi-user authentication system with sudo support.
+
+### Default User System
+
+- **Default user**: `simulaclient`
+- **Root user**: `root`
+- **Prompts**: `simulaclient@simulacli:~$` and `root@simulacli:~#`
+
+### Password Configuration
+
+**IMPORTANT**: Change the sudo password file for authentication
+The default password is `hacktheplanet` encoded in Base64
+
+1. **Create password file**: Use the included `passwordgenerator.html` utility
+2. **Generate base64 password**: Enter your desired password to get a base64-encoded string
+3. **Change sudo password**: Change the password in the `sudo` file located in the directory **above** your SimulaCLI installation.
+4. **Paste content**: Save only the base64 string (no extra characters) to the `sudo` file
+
+### Security Notes
+
+**Important Security Information:**
+
+- Base64 encoding is **NOT encryption** - it's only basic obfuscation
+- All authentication happens client-side and can be bypassed
+- **DO NOT use this system to protect truly sensitive data**
 
 ## Supported Commands
 
 Below are the default commands in SimulaCLI:
 
-- `simpack`: SimPack - SimulaCLI Package Manager - install, remove and manage packages
+### Core Commands
+
 - `cat`: Display the content of a file. Example: `cat readme.txt`
 - `cd`: Change to the specified directory. Example: `cd music`
-- `cd ..`: Change to the previous directory.
 - `clear`: Clear the terminal screen.
 - `echo`: Display a line of text. Example: `echo hello world!`
-- `exit`: Exit the terminal.
 - `grep`: Search for patterns in files or piped input. Example: `grep "text" filename`
 - `help`: Display all available commands.
 - `history`: Show session command history.
-- `ifconfig`: Display network configuration.
-- `ip addr`: Display IP address information.
-- `ll`: List directory contents with detailed information.
 - `ls`: List directory contents.
-- `play`: Plays an audio/video file.
+- `ll`: List directory contents with detailed information.
 - `pwd`: Print working directory.
-- `reboot`: Reboots the Operating System.
-- `scp`: Download a file if that file is available for download. Example: `scp track1.mp3`
-- `shutdown`: Shutdown the Operating System.
-- `sleep`: Sleep for specified duration in seconds. Example: `sleep 5`
-- `termconfig`: Manage terminal behavior and appearance settings
 - `view`: View an image file in a new tab. Example: `view image1.jpg`
 - `wc`: Count lines, words, and characters in files or piped input
+
+### User Management & Authentication
+
 - `whoami`: Display the current user.
+- `su`: Switch user. Usage: `su - root`, `su - simulaclient`
+- `sudo`: Execute commands as root. Usage: `sudo [command]`
+- `passwd`: Change passwords. Usage: `sudo passwd` (root only)
+- `exit`: Exit current session. If root, returns to simulaclient user. If simulaclient, exits system.
+- `logout`: Same as exit - logout from current session.
+
+### File Operations
+
+- `scp`: Download a file if that file is available for download. Example: `scp track1.mp3`
+- `play`: Plays an audio/video file.
+
+### System Operations
+
+- `ifconfig`: Display network configuration.
+- `ip addr`: Display IP address information.
+- `reboot`: Reboots the Operating System.
+- `shutdown`: Shutdown the Operating System.
+- `sleep`: Sleep for specified duration in seconds. Example: `sleep 5`
+
+### Package Management
+
+- `simpack`: SimPack - SimulaCLI Package Manager - install, remove and manage packages
+
+### Configuration
+
+- `termconfig`: Manage terminal behavior and appearance settings
+
+## Authentication Examples
+
+### Basic User Operations
+
+```bash
+# Check current user
+simulaclient@simulacli:~$ whoami
+simulaclient
+
+# Switch to root
+simulaclient@simulacli:~$ su - root
+Password: [enter your sudo password]
+root@simulacli:~# whoami
+root
+
+# Return to regular user
+root@simulacli:~# exit
+logout
+Switched to simulaclient user
+simulaclient@simulacli:~$
+```
+
+### Using Sudo
+
+```bash
+# Execute single command as root
+simulaclient@simulacli:~$ sudo cat dontreadme.txt
+[sudo] password for simulaclient: [enter password]
+[protected file contents displayed]
+
+# Change root password
+simulaclient@simulacli:~$ sudo passwd
+[sudo] password for simulaclient: [enter password]
+Changing password for root.
+Current password: [enter current password]
+New password: [enter new password]
+Retype new password: [confirm new password]
+passwd: password updated successfully
+```
 
 ## Supported Operators
 
@@ -215,7 +299,7 @@ Follow these guidelines to set up your own hard drive:
 
 1. **Permissions and Owner**: Every directory and file must have a `permissions` and `owner` value set.
 2. **File Attributes**: Files can have attributes such as `downloadable`, `viewable`, `playable`, `content`, `goto`, and `superuser`.
-3. **Root Authentication**: Files and directories that have the `superuser` attribute set to `true` will be lightly guarded by your root password. Users will have to login with the root password in order to perform any actions on that file. Once a user successfully "authenticates", they will stay authenticated until the page is refreshed.
+3. **Root Authentication**: Files and directories that have the `superuser` attribute set to `"true"` require root authentication to access. Users must authenticate with `su - root` or use `sudo` to access these files.
 
 ## Example Hard Drive Setup
 
@@ -264,6 +348,18 @@ Here's an example hard drive setup in JSON format:
           }
         }
       },
+      "protected-file.txt": {
+        "type": "file",
+        "owner": "root",
+        "permissions": "rw-",
+        "downloadable": false,
+        "viewable": true,
+        "playable": false,
+        "content": "This file requires root access!",
+        "goto": "",
+        "size": "88",
+        "superuser": "true"
+      },
       "readme.txt": {
         "type": "file",
         "owner": "root",
@@ -303,7 +399,7 @@ Here's an example hard drive setup in JSON format:
         const commandFiles = [
           'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'help.js', 'history.js', 'ifconfig.js',
           'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js',
-          'view.js', 'whoami.js', 'simpack.js', 'commandNameHere.js'
+          'view.js', 'whoami.js', 'simpack.js', 'su.js', 'sudo.js', 'passwd.js', 'logout.js', 'commandNameHere.js'
         ];
     ```
 
@@ -376,3 +472,8 @@ Submitted packages must also update `packages.json` with the package submission 
    - Any file can have text content even if it doesn't make sense to. It's your choice!
    - If you want to emulate a real terminal, set the `content` value for files that typically cannot be concatenated to an empty string.
    - You can use `content` to provide a description of the file when concatenated, without having viewed or played it first.
+
+4. **User Context**:
+   - Files created via redirection (`>`, `>>`) will be owned by the current user (`simulaclient` or `root`)
+   - Use `su - root` to switch users permanently, or `sudo` for single command execution
+   - The `exit` command behaves contextually - if root, returns to simulaclient; if simulaclient, exits system
