@@ -42,7 +42,7 @@ export default async function simpack(...args) {
     case 'update':
       return await updatePackageLists();
     case 'upgrade':
-      return await upgradePackages(packageName);
+      return await upgradePackages(...args.slice(1)); // Pass all remaining args for package name and flags
     case 'search':
       return searchPackages(packageName);
     case 'repo':
@@ -54,7 +54,7 @@ export default async function simpack(...args) {
     case 'reload':
       return reloadPackages();
     default:
-      return `simpack: invalid operation '${subcommand}'<br>Usage: simpack [get|install|list|remove|update|upgrade|search|repo|debug|test|reload] [package-name]`;
+      return `simpack: invalid operation '${subcommand}'<br>Usage: simpack [get|install|list|remove|update|upgrade|search|repo|debug|test|reload] [package-name] [-y]`;
   }
 }
 
@@ -153,7 +153,7 @@ async function updatePackageLists() {
   return output;
 }
 
-async function upgradePackages(specificPackage) {
+async function upgradePackages(specificPackage, ...flags) {
   // First, ensure we have update information
   if (!window.availableUpdates) {
     return 'E: No update information available. Run <strong>simpack update</strong> first.';
@@ -165,13 +165,21 @@ async function upgradePackages(specificPackage) {
     return 'No packages need to be upgraded.';
   }
 
+  // Handle arguments and flags
+  const allArgs = [specificPackage, ...flags].filter(Boolean);
+  const hasYesFlag = allArgs.includes('-y') || allArgs.includes('--yes');
+
+  // Filter out flags to get the actual package name
+  const packageArgs = allArgs.filter(arg => !arg.startsWith('-'));
+  const targetPackage = packageArgs.length > 0 ? packageArgs[0] : null;
+
   let packagesToUpgrade = updates;
 
-  if (specificPackage) {
+  if (targetPackage) {
     // Upgrade specific package
-    packagesToUpgrade = updates.filter(pkg => pkg.name === specificPackage);
+    packagesToUpgrade = updates.filter(pkg => pkg.name === targetPackage);
     if (packagesToUpgrade.length === 0) {
-      return `E: Package '${specificPackage}' has no available updates or is not installed.`;
+      return `E: Package '${targetPackage}' has no available updates or is not installed.`;
     }
   }
 
@@ -187,24 +195,143 @@ async function upgradePackages(specificPackage) {
 
   output += `<br>${packagesToUpgrade.length} upgraded, 0 newly installed, 0 to remove and ${updates.length - packagesToUpgrade.length} not upgraded.<br>`;
 
+  // Calculate approximate download size
+  const downloadSize = packagesToUpgrade.reduce((total, pkg) => total + Math.floor(Math.random() * 50 + 10), 0);
+  output += `Need to get ${downloadSize} kB of archives.<br>`;
+  output += `After this operation, ${Math.floor(downloadSize * 0.3)} kB of additional disk space will be used.<br><br>`;
+
+  // If no -y flag, prompt for confirmation
+  if (!hasYesFlag) {
+    output += '<strong>Do you want to continue? [Y/n]</strong><br>';
+    output += '<em>Use "simpack upgrade -y" to skip this prompt in the future.</em><br><br>';
+
+    // Set up interactive prompt state
+    window.simpackUpgradeState = {
+      packagesToUpgrade: packagesToUpgrade,
+      pendingOutput: output,
+      waitingForConfirmation: true
+    };
+
+    // Register event listener for the confirmation
+    setupUpgradeConfirmationHandler();
+
+    return output + '<em>Waiting for confirmation...</em>';
+  }
+
+  // Proceed with upgrade (either -y flag was used or this is a confirmed upgrade)
+  return await performUpgrade(packagesToUpgrade, output);
+}
+
+function setupUpgradeConfirmationHandler() {
+  // Remove any existing listener
+  if (window.upgradeConfirmationHandler) {
+    document.removeEventListener('keydown', window.upgradeConfirmationHandler);
+  }
+
+  window.upgradeConfirmationHandler = async function(event) {
+    if (!window.simpackUpgradeState || !window.simpackUpgradeState.waitingForConfirmation) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+
+    // Handle Ctrl+C to cancel
+    if (event.ctrlKey && key === 'c') {
+      event.preventDefault();
+
+      const terminal = document.getElementById('terminal');
+      terminal.innerHTML += '<div>^C</div>';
+      terminal.innerHTML += '<div>Interrupt: upgrade cancelled by user.</div>';
+      terminal.scrollTop = terminal.scrollHeight;
+
+      // Clean up
+      window.simpackUpgradeState = null;
+      document.removeEventListener('keydown', window.upgradeConfirmationHandler);
+      window.upgradeConfirmationHandler = null;
+
+      // Re-focus command input
+      const commandInput = document.getElementById('commandInput');
+      if (commandInput) {
+        commandInput.focus();
+      }
+
+      return;
+    }
+
+    if (key === 'y' || key === 'enter') {
+      event.preventDefault();
+
+      // User confirmed, proceed with upgrade
+      const terminal = document.getElementById('terminal');
+      terminal.innerHTML += '<div><strong>Y</strong></div>';
+      terminal.innerHTML += '<div>Proceeding with upgrade...</div>';
+
+      const result = await performUpgrade(
+        window.simpackUpgradeState.packagesToUpgrade,
+        window.simpackUpgradeState.pendingOutput
+      );
+
+      terminal.innerHTML += `<div>${result}</div>`;
+      terminal.scrollTop = terminal.scrollHeight;
+
+      // Clean up
+      window.simpackUpgradeState = null;
+      document.removeEventListener('keydown', window.upgradeConfirmationHandler);
+      window.upgradeConfirmationHandler = null;
+
+      // Re-focus command input
+      const commandInput = document.getElementById('commandInput');
+      if (commandInput) {
+        commandInput.focus();
+      }
+
+    } else if (key === 'n') {
+      event.preventDefault();
+
+      // User declined
+      const terminal = document.getElementById('terminal');
+      terminal.innerHTML += '<div><strong>N</strong></div>';
+      terminal.innerHTML += '<div>Abort.</div>';
+      terminal.scrollTop = terminal.scrollHeight;
+
+      // Clean up
+      window.simpackUpgradeState = null;
+      document.removeEventListener('keydown', window.upgradeConfirmationHandler);
+      window.upgradeConfirmationHandler = null;
+
+      // Re-focus command input
+      const commandInput = document.getElementById('commandInput');
+      if (commandInput) {
+        commandInput.focus();
+      }
+    }
+  };
+
+  document.addEventListener('keydown', window.upgradeConfirmationHandler);
+}
+
+async function performUpgrade(packagesToUpgrade, initialOutput) {
+  let output = '';
+
   // Simulate upgrade process
   for (const pkg of packagesToUpgrade) {
     try {
-      output += `<br>Upgrading ${pkg.name}...<br>`;
+      output += `<br>Get:1 simulacli-repo ${pkg.name} ${pkg.newVersion} [${Math.floor(Math.random() * 50 + 10)} kB]<br>`;
 
       // Re-install the package (this will get the latest version)
       const installResult = await installPackageInternal(pkg.name, true);
       if (installResult.success) {
-        output += `Successfully upgraded ${pkg.name} to version ${pkg.newVersion}<br>`;
+        output += `Setting up ${pkg.name} (${pkg.newVersion})...<br>`;
+        output += `Processing triggers for ${pkg.name}...<br>`;
       } else {
-        output += `<span style="color: #f00;">Failed to upgrade ${pkg.name}: ${installResult.error}</span><br>`;
+        output += `<span style="color: #f00;">E: Failed to upgrade ${pkg.name}: ${installResult.error}</span><br>`;
       }
     } catch (error) {
-      output += `<span style="color: #f00;">Error upgrading ${pkg.name}: ${error.message}</span><br>`;
+      output += `<span style="color: #f00;">E: Error upgrading ${pkg.name}: ${error.message}</span><br>`;
     }
   }
 
-  output += '<br><strong>Package upgrades completed.</strong><br>';
+  output += '<br><strong>Package upgrades completed successfully.</strong><br>';
   output += '<em>Run "simpack reload" or "reboot" to activate updated packages.</em>';
 
   // Clear update cache since we've processed upgrades
@@ -539,4 +666,4 @@ async function reloadPackages() {
   return output + '<br>Package reload complete. Try your commands now!';
 }
 
-simpack.help = "SimPack - SimulaCLI Package Manager - install, remove and manage packages. Usage: simpack [get|install|list|remove|update|upgrade|search|repo|debug|test|reload] [package-name]";
+simpack.help = "SimPack - SimulaCLI Package Manager - install, remove and manage packages. Usage: simpack [get|install|list|remove|update|upgrade|search|repo|debug|test|reload] [package-name] [-y]. Use -y flag with upgrade to skip confirmation prompt.";
