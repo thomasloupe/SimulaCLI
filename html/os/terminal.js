@@ -1,5 +1,7 @@
 import { executeCommand, importCommands } from './commands.js';
 import { isAuthenticatedAsRoot, isAuthenticationRequired, verifyRootPassword } from './superuser.js';
+import { commandHistory } from './bin/filesystem.js';
+import { autoComplete } from './autocomplete.js';
 
 const terminal = document.getElementById('terminal');
 const commandInput = document.getElementById('commandInput');
@@ -16,6 +18,19 @@ let isCommandRunning = false;
 let currentCommandAbortController = null;
 let currentTimeouts = [];
 let currentIntervals = [];
+
+// Command history navigation
+let historyIndex = -1;
+let originalInput = '';
+
+// Reverse search state
+let reverseSearchState = {
+  active: false,
+  query: '',
+  index: 0,
+  matches: [],
+  originalInput: ''
+};
 
 // Safe getter for settings that handles when termconfig isn't loaded yet
 function getSetting(key) {
@@ -97,6 +112,12 @@ function clearAllTimers() {
 function handleInterrupt() {
   const commandInput = document.getElementById('commandInput');
 
+  // Exit reverse search if active
+  if (reverseSearchState.active) {
+    exitReverseSearch();
+    return;
+  }
+
   if (!isCommandRunning) {
     // No command running, just show ^C and new prompt
     const promptSettings = window.terminalPromptSettings || { color: 'lime', size: 1 };
@@ -132,6 +153,135 @@ function handleInterrupt() {
   terminal.scrollTop = terminal.scrollHeight;
 }
 
+// Command history navigation
+function navigateHistory(direction) {
+  if (commandHistory.length === 0) return;
+
+  if (direction === 'up') {
+    if (historyIndex === -1) {
+      // First time going up, save current input
+      originalInput = commandInput.value;
+      historyIndex = commandHistory.length - 1;
+    } else if (historyIndex > 0) {
+      historyIndex--;
+    }
+    commandInput.value = commandHistory[historyIndex];
+  } else if (direction === 'down') {
+    if (historyIndex !== -1) {
+      historyIndex++;
+      if (historyIndex >= commandHistory.length) {
+        // Back to original input
+        historyIndex = -1;
+        commandInput.value = originalInput;
+      } else {
+        commandInput.value = commandHistory[historyIndex];
+      }
+    }
+  }
+
+  // Position cursor at end
+  setTimeout(() => {
+    commandInput.setSelectionRange(commandInput.value.length, commandInput.value.length);
+  }, 0);
+}
+
+// Reverse search functionality
+function startReverseSearch() {
+  reverseSearchState.active = true;
+  reverseSearchState.query = '';
+  reverseSearchState.index = 0;
+  reverseSearchState.matches = [];
+  reverseSearchState.originalInput = commandInput.value;
+
+  updateReverseSearchPrompt();
+}
+
+function updateReverseSearch(char) {
+  if (char === 'backspace') {
+    reverseSearchState.query = reverseSearchState.query.slice(0, -1);
+  } else {
+    reverseSearchState.query += char;
+  }
+
+  // Find matching commands
+  reverseSearchState.matches = commandHistory
+    .filter(cmd => cmd.toLowerCase().includes(reverseSearchState.query.toLowerCase()))
+    .reverse(); // Most recent first
+
+  reverseSearchState.index = 0;
+  updateReverseSearchPrompt();
+}
+
+function updateReverseSearchPrompt() {
+  const match = reverseSearchState.matches[reverseSearchState.index] || '';
+  const prompt = `(reverse-i-search)\`${reverseSearchState.query}': ${match}`;
+
+  // Create a visual prompt (this is a simplified version)
+  commandInput.placeholder = prompt;
+  commandInput.value = match;
+}
+
+function navigateReverseSearch(direction) {
+  if (reverseSearchState.matches.length === 0) return;
+
+  if (direction === 'up' && reverseSearchState.index < reverseSearchState.matches.length - 1) {
+    reverseSearchState.index++;
+  } else if (direction === 'down' && reverseSearchState.index > 0) {
+    reverseSearchState.index--;
+  }
+
+  updateReverseSearchPrompt();
+}
+
+function exitReverseSearch(accept = false) {
+  if (accept && reverseSearchState.matches.length > 0) {
+    commandInput.value = reverseSearchState.matches[reverseSearchState.index];
+  } else {
+    commandInput.value = reverseSearchState.originalInput;
+  }
+
+  commandInput.placeholder = getSetting('placeholdertext') || 'Type commands here...';
+  reverseSearchState.active = false;
+
+  // Position cursor at end
+  setTimeout(() => {
+    commandInput.setSelectionRange(commandInput.value.length, commandInput.value.length);
+  }, 0);
+}
+
+// Tab completion handler
+function handleTabCompletion() {
+  const input = commandInput.value;
+  const cursorPosition = commandInput.selectionStart;
+
+  const result = autoComplete.handleTabCompletion(input, cursorPosition);
+
+  commandInput.value = result.completed;
+  commandInput.setSelectionRange(result.cursorPosition, result.cursorPosition);
+
+  // Show suggestions if there are multiple
+  if (result.suggestions && result.suggestions.length > 1) {
+    const suggestionText = result.suggestions.length > 10
+      ? `${result.suggestions.length} completions available...`
+      : result.suggestions.map(s => typeof s === 'string' ? s : s.displayName || s.name).join('  ');
+
+    addToTerminal(`<span style="color: #888;">${suggestionText}</span>`);
+  }
+}
+
+// Insert last command (Ctrl+P)
+function insertLastCommand() {
+  if (commandHistory.length > 0) {
+    const lastCommand = commandHistory[commandHistory.length - 1];
+    commandInput.value = lastCommand;
+
+    // Position cursor at end
+    setTimeout(() => {
+      commandInput.setSelectionRange(commandInput.value.length, commandInput.value.length);
+    }, 0);
+  }
+}
+
 async function initialize() {
     await importCommands();
     console.log('Commands ready for execution');
@@ -160,7 +310,7 @@ async function initialize() {
     terminal.addEventListener('click', handleTerminalClick);
     commandInput.addEventListener('keydown', handleCommand);
 
-    // Add global keydown listener for CTRL+C
+    // Add global keydown listener for CTRL+C and other shortcuts
     document.addEventListener('keydown', (event) => {
         // Check for CTRL+C (Ctrl + C)
         if (event.ctrlKey && event.key.toLowerCase() === 'c') {
@@ -264,6 +414,96 @@ async function playBootupSound() {
 }
 
 async function handleCommand(event) {
+    // Handle reverse search mode
+    if (reverseSearchState.active) {
+        switch (event.key) {
+            case 'Enter':
+                event.preventDefault();
+                exitReverseSearch(true);
+                return;
+            case 'Escape':
+            case 'c':
+                if (event.ctrlKey) {
+                    event.preventDefault();
+                    exitReverseSearch(false);
+                    return;
+                }
+                break;
+            case 'r':
+                if (event.ctrlKey) {
+                    event.preventDefault();
+                    navigateReverseSearch('up');
+                    return;
+                }
+                break;
+            case 'ArrowUp':
+                event.preventDefault();
+                navigateReverseSearch('up');
+                return;
+            case 'ArrowDown':
+                event.preventDefault();
+                navigateReverseSearch('down');
+                return;
+            case 'Backspace':
+                event.preventDefault();
+                updateReverseSearch('backspace');
+                return;
+            default:
+                if (event.key.length === 1 && !event.ctrlKey && !event.altKey) {
+                    event.preventDefault();
+                    updateReverseSearch(event.key);
+                    return;
+                }
+                break;
+        }
+        return;
+    }
+
+    // Handle keyboard shortcuts
+    if (event.ctrlKey) {
+        switch (event.key.toLowerCase()) {
+            case 'r':
+                event.preventDefault();
+                startReverseSearch();
+                return;
+            case 'p':
+                event.preventDefault();
+                insertLastCommand();
+                return;
+        }
+    }
+
+    // Handle arrow keys for history navigation
+    if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        navigateHistory('up');
+        return;
+    }
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        navigateHistory('down');
+        return;
+    }
+
+    // Handle tab completion
+    if (event.key === 'Tab') {
+        event.preventDefault();
+        handleTabCompletion();
+        return;
+    }
+
+    // Reset autocomplete state on any other key
+    if (event.key !== 'Tab') {
+        autoComplete.resetCompletionState();
+    }
+
+    // Reset history navigation on any typing
+    if (event.key.length === 1 || event.key === 'Backspace' || event.key === 'Delete') {
+        historyIndex = -1;
+        originalInput = '';
+    }
+
     if (event.key === 'Enter') {
         // Check keystroke setting before playing sound
         if (getSetting('keystrokes')) {
@@ -278,6 +518,10 @@ async function handleCommand(event) {
 
         terminal.innerHTML += `<div><span style="${promptStyle}">></span> ${input}</div>`;
         event.target.value = '';
+
+        // Reset history navigation
+        historyIndex = -1;
+        originalInput = '';
 
         if (input !== '') {
             // Set command running state
