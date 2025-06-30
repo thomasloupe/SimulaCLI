@@ -122,4 +122,4 @@ function processPatternCommand(expression, lines) {
   }
 }
 
-sed.help = "Stream editor for filtering and transforming text. Usage: sed [expression] [file]<br>Examples:<br>sed 's/old/new/g' file.txt - Replace all 'old' with 'new'<br>sed '2d' file.txt - Delete line 2<br>sed '/pattern/d' file.txt - Delete lines matching pattern";
+sed.help = "Stream editor for filtering and transforming text. Usage: sed [expression] [file]";
