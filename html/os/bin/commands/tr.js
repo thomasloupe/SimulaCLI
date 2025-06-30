@@ -101,4 +101,4 @@ function escapeRegex(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-tr.help = "Translate/delete characters. Usage: tr [-ds] [SET1] [SET2] or echo \"text\" | tr [SET1] [SET2]<br>Examples: echo \"hello\" | tr 'a-z' 'A-Z' or echo \"hello\" | tr -d 'l'";
+tr.help = "Translate/delete characters. Usage: tr [-ds] [SET1] [SET2] or echo \"text\" | tr [SET1] [SET2]";
