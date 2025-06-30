@@ -1,14 +1,12 @@
 import { displayMotd, playReturnSound, playShutdownSound, stopAllAudio, nextAudio, returnSound, backgroundAudio, registerTimeout } from '../../terminal.js';
 import { resetToRoot } from '../filesystem.js';
+import { resetSystemBootTime } from '../../commands.js';
 
-// Safe getter for settings that handles when termconfig isn't loaded yet
 function getSetting(key) {
   try {
-    // Try to get the setting if termconfig is loaded
     if (window.terminalSettings && window.terminalSettings[key] !== undefined) {
       return window.terminalSettings[key];
     }
-    // Default values if termconfig isn't loaded yet
     const defaults = {
       keystrokes: true,
       drivehum: true,
@@ -18,7 +16,7 @@ function getSetting(key) {
     return defaults[key] !== undefined ? defaults[key] : true;
   } catch (error) {
     console.log('Settings not available yet, using defaults');
-    return true; // Default to enabled
+    return true;
   }
 }
 
@@ -26,20 +24,16 @@ export default async function reboot() {
   const terminal = document.getElementById('terminal');
   const commandInput = document.getElementById('commandInput');
 
-  // Disable the input field (like real Linux)
   commandInput.disabled = true;
 
-  // Check if reboot simulation is enabled
   if (!getSetting('rebootsim')) {
-    // Skip simulation, do immediate reboot
     terminal.innerHTML = "<div>System rebooting...</div>";
 
-    // Brief delay for user feedback
     const timeout = setTimeout(async () => {
-      terminal.innerHTML = ""; // Clear the terminal
-      resetToRoot(); // Reset to root directory
+      terminal.innerHTML = "";
+      resetToRoot();
+      resetSystemBootTime();
       await displayMotd();
-      // Enable the input field after reboot process is complete
       commandInput.disabled = false;
       commandInput.focus();
     }, 1000);
@@ -48,7 +42,6 @@ export default async function reboot() {
     return '';
   }
 
-  // Full reboot simulation (original behavior)
   terminal.innerHTML = "<div>Broadcast message from systemd-journald@simulacli</div>";
 
   function getRandomDelay(min, max) {
@@ -82,7 +75,6 @@ export default async function reboot() {
       message: "Booting up...",
       delay: bootingUpDelay,
       sound: () => {
-        // Only play background audio if drivehum setting is enabled
         if (getSetting('drivehum')) {
           backgroundAudio.play();
         }
@@ -112,39 +104,33 @@ export default async function reboot() {
   for (const step of steps) {
     totalDelay += step.delay;
     const timeout = setTimeout(() => {
-      // Check if we should still be running (not interrupted)
       try {
         terminal.innerHTML += `<div>${step.message}</div>`;
         scrollToBottom();
         if (step.sound) {
           step.sound();
         } else if (step.delay !== 4000) {
-          // Only play return sound if keystrokes setting is enabled
           if (getSetting('keystrokes')) {
             playReturnSound();
           }
         }
       } catch (error) {
-        // Timeout was probably cleared due to interrupt
         console.log('[REBOOT] Step interrupted:', step.message);
       }
     }, totalDelay);
 
-    // Register each timeout for potential interruption
     registerTimeout(timeout);
   }
 
-  // Final completion timeout
   const finalTimeout = setTimeout(async () => {
     try {
-      terminal.innerHTML = ""; // Clear the terminal
-      resetToRoot(); // Reset to root directory
+      terminal.innerHTML = "";
+      resetToRoot();
+      resetSystemBootTime();
       await displayMotd();
-      // Enable the input field after reboot process is complete
       commandInput.disabled = false;
       commandInput.focus();
     } catch (error) {
-      // Reboot was interrupted
       console.log('[REBOOT] Final step interrupted');
       commandInput.disabled = false;
       commandInput.focus();
@@ -162,4 +148,4 @@ function scrollToBottom() {
   }, 100);
 }
 
-reboot.help = "Reboot the Operating System. Press CTRL+C to interrupt.";
+reboot.help = "Reboot the Operating System.";

@@ -45,11 +45,15 @@ export async function importCommands() {
     // Initialize package storage first
     initializePackageStorage();
 
-    // Load built-in commands (including new authentication commands)
+    // Load built-in commands
     const commandFiles = [
-      'simpack.js', 'cat.js', 'cd.js', 'clear.js', 'echo.js', 'exit.js', 'grep.js', 'help.js', 'history.js', 'ifconfig.js',
-      'ip_addr.js', 'll.js', 'ls.js', 'play.js', 'pwd.js', 'reboot.js', 'scp.js', 'shutdown.js',
-      'sleep.js', 'termconfig.js', 'view.js', 'wc.js', 'whoami.js', 'su.js', 'sudo.js', 'passwd.js', 'logout.js'
+      'alias.js', 'awk.js', 'cat.js', 'cd.js', 'clear.js', 'cp.js', 'curl.js', 'cut.js', 'date.js',
+      'diff.js', 'dig.js', 'echo.js', 'exit.js', 'file.js', 'find.js', 'free.js', 'grep.js', 'head.js',
+      'help.js', 'history.js', 'hostname.js', 'ifconfig.js', 'ip_addr.js', 'less.js', 'll.js',
+      'logout.js', 'ls.js', 'mkdir.js', 'more.js', 'mv.js', 'nslookup.js', 'passwd.js', 'ping.js',
+      'play.js', 'pwd.js', 'reboot.js', 'rm.js', 'scp.js', 'sed.js', 'shutdown.js', 'simpack.js',
+      'sleep.js', 'sort.js', 'su.js', 'sudo.js', 'tail.js', 'termconfig.js', 'touch.js', 'tr.js',
+      'uname.js', 'unalias.js', 'uniq.js', 'uptime.js', 'vi.js', 'view.js', 'wc.js', 'who.js', 'whoami.js'
     ];
 
     console.log('[COMMANDS] Loading built-in commands...');
@@ -67,6 +71,9 @@ export async function importCommands() {
     });
 
     await Promise.all(importPromises);
+
+    initializeSystemTime();
+
     console.log('[COMMANDS] Built-in commands loaded:', Object.keys(commands).filter(cmd => commandFiles.map(f => f.split('.')[0]).includes(cmd)));
 
     // Load dynamically installed packages

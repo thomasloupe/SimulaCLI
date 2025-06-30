@@ -2,24 +2,23 @@
 
 // Default settings
 const DEFAULT_SETTINGS = {
-  keystrokes: true,     // Play keystroke sounds
-  drivehum: true,       // Play background audio/drive hum
-  bootupsim: true,      // Show bootup simulation
-  rebootsim: true,      // Show reboot simulation
-  caretcolor: 'lime',   // Cursor color
-  caretsize: 1,         // Cursor size multiplier (1-5)
-  textcolor: 'lime',    // Terminal text color
-  backgroundcolor: 'black', // Terminal background color
-  promptcolor: 'lime',  // Command prompt ("> ") color
-  promptsize: 1,        // Command prompt size multiplier (1-5)
+  keystrokes: true,                         // Play keystroke sounds
+  drivehum: true,                           // Play background audio/drive hum
+  bootupsim: true,                          // Show bootup simulation
+  rebootsim: true,                          // Show reboot simulation
+  caretcolor: 'lime',                       // Cursor color
+  caretsize: 1,                             // Cursor size multiplier (1-5)
+  textcolor: 'lime',                        // Terminal text color
+  backgroundcolor: 'black',                 // Terminal background color
+  promptcolor: 'lime',                      // Command prompt ("> ") color
+  promptsize: 1,                            // Command prompt size multiplier (1-5)
   placeholdertext: 'Type commands here...', // Placeholder text in input
-  placeholdercolor: 'gray', // Placeholder text color
-  commandlinebackground: '#3f3f3f', // Command line input background color
-  linkcolor: '#0ff',    // URL link color (cyan)
-  linkhovercolor: '#fff' // URL link hover color (white)
+  placeholdercolor: 'gray',                 // Placeholder text color
+  commandlinebackground: '#3f3f3f',         // Command line input background color
+  linkcolor: '#0ff',                        // URL link color (cyan)
+  linkhovercolor: '#fff'                    // URL link hover color (white)
 };
 
-// Initialize settings storage
 function initializeSettings() {
   if (!window.terminalSettings) {
     try {
@@ -27,7 +26,6 @@ function initializeSettings() {
       if (stored) {
         window.terminalSettings = JSON.parse(stored);
 
-        // Validate and fix any undefined or corrupted values
         Object.keys(DEFAULT_SETTINGS).forEach(key => {
           if (window.terminalSettings[key] === undefined ||
               window.terminalSettings[key] === null ||
@@ -37,7 +35,6 @@ function initializeSettings() {
           }
         });
 
-        // Save the cleaned settings back
         saveSettings();
       } else {
         window.terminalSettings = { ...DEFAULT_SETTINGS };
@@ -49,7 +46,6 @@ function initializeSettings() {
   }
 }
 
-// Save settings to localStorage
 function saveSettings() {
   try {
     localStorage.setItem('simulacli_settings', JSON.stringify(window.terminalSettings));
@@ -58,7 +54,6 @@ function saveSettings() {
   }
 }
 
-// Get current setting value
 export function getSetting(key) {
   initializeSettings();
   const value = window.terminalSettings[key];
@@ -71,7 +66,6 @@ export function getSetting(key) {
   return value;
 }
 
-// Set setting value
 export function setSetting(key, value) {
   initializeSettings();
   window.terminalSettings[key] = value;
@@ -233,9 +227,7 @@ function setSingleSetting(setting, value) {
 
   let output = `${setting}: ${oldValue ? 'on' : 'off'} → <strong>${boolValue ? 'on' : 'off'}</strong><br>`;
 
-  // Provide immediate feedback for audio settings
   if (setting === 'drivehum' && !boolValue) {
-    // Stop background audio immediately if disabled
     try {
       const backgroundAudio = document.getElementById('backgroundAudio');
       const nextAudio = document.getElementById('nextAudio');
@@ -249,11 +241,9 @@ function setSingleSetting(setting, value) {
       }
       output += '<em>Background audio stopped immediately</em><br>';
     } catch (error) {
-      // Silent fail if audio elements not found
     }
   }
 
-  // Special messages for simulation settings
   if ((setting === 'bootupsim' || setting === 'rebootsim') && oldValue !== boolValue) {
     output += `<em>This setting will take effect on next ${setting === 'bootupsim' ? 'startup' : 'reboot'}</em><br>`;
   }
@@ -295,7 +285,7 @@ All settings have been restored to their default values.`;
 
 // Available colors for terminal customization
 const AVAILABLE_COLORS = {
-  // Terminal classics
+  // Terminal default
   'black': '#000000',
   'white': '#ffffff',
   'red': '#ff0000',
@@ -306,7 +296,7 @@ const AVAILABLE_COLORS = {
   'magenta': '#ff00ff',
   'lime': '#0f0',
 
-  // Extended colors
+  // Extended
   'orange': '#ff8800',
   'purple': '#8800ff',
   'pink': '#ff69b4',
@@ -316,7 +306,7 @@ const AVAILABLE_COLORS = {
   'silver': '#c0c0c0',
   'gold': '#ffd700',
 
-  // Dark variants
+  // Dark
   'darkred': '#8b0000',
   'darkgreen': '#006400',
   'darkblue': '#00008b',
@@ -326,7 +316,7 @@ const AVAILABLE_COLORS = {
   'darkgray': '#404040',
   'darkgrey': '#404040',
 
-  // Terminal-friendly colors
+  // Safe
   'lightblue': '#87ceeb',
   'lightgreen': '#90ee90',
   'lightcyan': '#e0ffff',
@@ -379,7 +369,6 @@ function showAvailableColors() {
 function setColorSetting(setting, value) {
   const normalizedValue = value.toLowerCase();
 
-  // Check if it's a valid named color or hex code
   let colorValue = normalizedValue;
   if (AVAILABLE_COLORS[normalizedValue]) {
     colorValue = normalizedValue; // Use the color name
@@ -419,7 +408,6 @@ function setSizeSetting(setting, value) {
 }
 
 function setTextSetting(setting, value) {
-  // Handle empty string case - if user types "" or '', set to empty string
   let textValue = value;
   if (value === '""' || value === "''" || value === 'empty' || value === 'none') {
     textValue = '';
@@ -439,30 +427,24 @@ function setTextSetting(setting, value) {
   return output;
 }
 
-// Smart color conflict detection
 function getContrastingColor(backgroundColor) {
   // Convert color name to hex if needed
   const bgColor = AVAILABLE_COLORS[backgroundColor] || backgroundColor;
 
-  // Parse hex color
   let hex = bgColor.replace('#', '');
   if (hex.length === 3) {
     hex = hex.split('').map(char => char + char).join('');
   }
 
-  // Calculate luminance
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
 
-  // Calculate relative luminance
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
-  // Return contrasting color
   return luminance > 0.5 ? 'black' : 'white';
 }
 
-// Apply visual settings to the terminal
 function applyVisualSettings() {
   try {
     const terminal = document.getElementById('terminal');
@@ -471,55 +453,43 @@ function applyVisualSettings() {
     if (terminal && commandInput) {
       const settings = window.terminalSettings;
 
-      // Apply terminal background color
       const terminalBgColor = AVAILABLE_COLORS[settings.backgroundcolor] || settings.backgroundcolor;
       terminal.style.backgroundColor = terminalBgColor;
 
-      // Apply terminal text color
       const textColor = AVAILABLE_COLORS[settings.textcolor] || settings.textcolor;
       terminal.style.color = textColor;
 
-      // Apply command line input background
       const inputBgColor = AVAILABLE_COLORS[settings.commandlinebackground] || settings.commandlinebackground;
       commandInput.style.backgroundColor = inputBgColor;
 
-      // Apply input text color (same as terminal text)
       commandInput.style.color = textColor;
 
-      // Apply caret color and size
       const caretColor = AVAILABLE_COLORS[settings.caretcolor] || settings.caretcolor;
       commandInput.style.caretColor = caretColor;
 
-      // Apply caret size by adjusting font size of input
       const baseSize = 16; // Base font size in pixels
       const newSize = baseSize * settings.caretsize;
       commandInput.style.fontSize = `${newSize}px`;
 
-      // Apply placeholder text with proper fallbacks
       let placeholderText = settings.placeholdertext;
 
-      // Handle undefined, null, or "undefined" string cases
       if (placeholderText === undefined || placeholderText === null || placeholderText === 'undefined') {
         placeholderText = DEFAULT_SETTINGS.placeholdertext; // Use default
       }
 
-      // If user explicitly set it to empty string, respect that
       commandInput.placeholder = placeholderText;
 
       let placeholderColor = AVAILABLE_COLORS[settings.placeholdercolor] || settings.placeholdercolor;
 
-      // Handle undefined placeholder color
       if (placeholderColor === undefined || placeholderColor === null || placeholderColor === 'undefined') {
         placeholderColor = DEFAULT_SETTINGS.placeholdercolor;
       }
 
-      // Check if placeholder color conflicts with input background
       if (colorsAreSimilar(placeholderColor, inputBgColor)) {
         placeholderColor = getContrastingColor(inputBgColor);
         console.log(`[TERMCONFIG] Placeholder color conflicted with background, changed to ${placeholderColor}`);
       }
 
-      // Apply placeholder styling using CSS custom property
       const style = document.createElement('style');
       style.textContent = `
         #commandInput::placeholder {
@@ -528,7 +498,6 @@ function applyVisualSettings() {
         }
       `;
 
-      // Remove any existing placeholder style
       const existingStyle = document.getElementById('placeholder-style');
       if (existingStyle) {
         existingStyle.remove();
@@ -537,13 +506,11 @@ function applyVisualSettings() {
       style.id = 'placeholder-style';
       document.head.appendChild(style);
 
-      // Store prompt settings globally so terminal.js can use them
       window.terminalPromptSettings = {
         color: AVAILABLE_COLORS[settings.promptcolor] || settings.promptcolor,
         size: settings.promptsize
       };
 
-      // Store link settings globally so terminal.js can use them
       window.terminalLinkSettings = {
         color: AVAILABLE_COLORS[settings.linkcolor] || settings.linkcolor,
         hovercolor: AVAILABLE_COLORS[settings.linkhovercolor] || settings.linkhovercolor
@@ -556,17 +523,14 @@ function applyVisualSettings() {
   }
 }
 
-// Check if two colors are too similar (would cause visibility issues)
 function colorsAreSimilar(color1, color2) {
   const hex1 = (AVAILABLE_COLORS[color1] || color1).replace('#', '');
   const hex2 = (AVAILABLE_COLORS[color2] || color2).replace('#', '');
 
-  // If they're the same color, definitely similar
   if (hex1.toLowerCase() === hex2.toLowerCase()) {
     return true;
   }
 
-  // Calculate color difference (simplified)
   const r1 = parseInt(hex1.substr(0, 2), 16);
   const g1 = parseInt(hex1.substr(2, 2), 16);
   const b1 = parseInt(hex1.substr(4, 2), 16);
@@ -575,29 +539,23 @@ function colorsAreSimilar(color1, color2) {
   const g2 = parseInt(hex2.substr(2, 2), 16);
   const b2 = parseInt(hex2.substr(4, 2), 16);
 
-  // Calculate Euclidean distance in RGB space
   const distance = Math.sqrt(
     Math.pow(r1 - r2, 2) +
     Math.pow(g1 - g2, 2) +
     Math.pow(b1 - b2, 2)
   );
 
-  // Colors are similar if distance is less than 50 (arbitrary threshold)
   return distance < 50;
 }
 
-// Initialize settings and apply visual settings on module load
 initializeSettings();
 
-// Apply visual settings when the page loads
 if (typeof window !== 'undefined') {
-  // Apply settings after a short delay to ensure DOM is ready
   setTimeout(() => {
     applyVisualSettings();
   }, 100);
 }
 
-// Export the visual settings function for use by terminal.js
 export { applyVisualSettings };
 
 termconfig.help = "Manage terminal behavior and appearance settings (audio, simulations, colors, URL links, etc). Usage: termconfig [setting] [value]";

@@ -4,7 +4,6 @@ import { checkAccess } from '../../superuser.js';
 export default async function view(fileName) {
   const file = currentDirectory.children && currentDirectory.children[fileName];
   if (file && file.viewable) {
-    // Check file access permissions
     const accessCheck = checkAccess(file);
     if (!accessCheck.hasAccess) {
       return `view: ${fileName}: ${accessCheck.message}`;

@@ -1,4 +1,4 @@
-// sleep.js - Sleep for specified duration (interruptible with CTRL+C)
+// sleep.js - Sleep for specified duration
 import { registerTimeout } from '../../terminal.js';
 
 export default async function sleep(...args) {
@@ -16,13 +16,11 @@ export default async function sleep(...args) {
     return 'sleep: maximum sleep time is 3600 seconds (1 hour)';
   }
 
-  // Disable command input during sleep (like real Linux)
   const commandInput = document.getElementById('commandInput');
   if (commandInput) {
     commandInput.disabled = true;
   }
 
-  // Create a promise that resolves after the specified time - completely silent
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       // Re-enable input when sleep completes
@@ -30,10 +28,9 @@ export default async function sleep(...args) {
         commandInput.disabled = false;
         commandInput.focus();
       }
-      resolve(''); // Return empty string - no output whatsoever
+      resolve('');
     }, seconds * 1000);
 
-    // Register timeout for interruption
     registerTimeout(timeout);
   });
 }

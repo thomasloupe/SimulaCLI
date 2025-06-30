@@ -2,7 +2,6 @@ import { isAuthenticatedAsRoot } from '../../superuser.js';
 import { getRepositories } from '../../repositories.js';
 import { commands } from '../../commands.js';
 
-// Initialize package storage with persistence
 function initializePackageStorage() {
   if (!window.installedPackages) {
     try {
@@ -24,7 +23,6 @@ function savePackages() {
   }
 }
 
-// Initialize on load
 initializePackageStorage();
 
 export default async function simpack(...args) {
@@ -42,7 +40,7 @@ export default async function simpack(...args) {
     case 'update':
       return await updatePackageLists();
     case 'upgrade':
-      return await upgradePackages(...args.slice(1)); // Pass all remaining args for package name and flags
+      return await upgradePackages(...args.slice(1));
     case 'search':
       return searchPackages(packageName);
     case 'repo':
@@ -67,7 +65,6 @@ async function updatePackageLists() {
   let failedRepos = [];
   let availableUpdates = [];
 
-  // Check each repository
   for (const repo of repositories) {
     try {
       output += `Hit:${repoCount + 1} ${repo.url} packages<br>`;
@@ -80,11 +77,9 @@ async function updatePackageLists() {
         totalPackages += packageList.length;
         repoCount++;
 
-        // Check for updates to installed packages
         for (const availablePackage of packageList) {
           const installedPackage = window.installedPackages[availablePackage.name];
           if (installedPackage) {
-            // Compare versions (if version info is available)
             if (availablePackage.version && installedPackage.version !== availablePackage.version) {
               availableUpdates.push({
                 name: availablePackage.name,
@@ -93,8 +88,6 @@ async function updatePackageLists() {
                 repository: repo.name
               });
             } else if (!installedPackage.version) {
-              // For packages without version info, check if code might be different
-              // This is a simplified check - in reality we'd need better version tracking
               availableUpdates.push({
                 name: availablePackage.name,
                 currentVersion: 'unknown',
@@ -116,7 +109,6 @@ async function updatePackageLists() {
 
   output += '<br>';
 
-  // Show summary
   if (repoCount > 0) {
     output += `Fetched package information from ${repoCount} repositories.<br>`;
     output += `Found ${totalPackages} available packages.<br>`;
@@ -126,7 +118,6 @@ async function updatePackageLists() {
     output += `<span style="color: #f80;">Warning: Failed to reach ${failedRepos.length} repositories.</span><br>`;
   }
 
-  // Show available updates
   if (availableUpdates.length > 0) {
     output += '<br><strong>The following packages have updates available:</strong><br>';
     availableUpdates.forEach(pkg => {
@@ -146,7 +137,6 @@ async function updatePackageLists() {
     }
   }
 
-  // Store update info for potential upgrades
   window.availableUpdates = availableUpdates;
 
   output += '<br>Reading package lists... Done';
@@ -154,7 +144,6 @@ async function updatePackageLists() {
 }
 
 async function upgradePackages(specificPackage, ...flags) {
-  // First, ensure we have update information
   if (!window.availableUpdates) {
     return 'E: No update information available. Run <strong>simpack update</strong> first.';
   }
@@ -165,18 +154,14 @@ async function upgradePackages(specificPackage, ...flags) {
     return 'No packages need to be upgraded.';
   }
 
-  // Handle arguments and flags
   const allArgs = [specificPackage, ...flags].filter(Boolean);
   const hasYesFlag = allArgs.includes('-y') || allArgs.includes('--yes');
-
-  // Filter out flags to get the actual package name
   const packageArgs = allArgs.filter(arg => !arg.startsWith('-'));
   const targetPackage = packageArgs.length > 0 ? packageArgs[0] : null;
 
   let packagesToUpgrade = updates;
 
   if (targetPackage) {
-    // Upgrade specific package
     packagesToUpgrade = updates.filter(pkg => pkg.name === targetPackage);
     if (packagesToUpgrade.length === 0) {
       return `E: Package '${targetPackage}' has no available updates or is not installed.`;
@@ -195,35 +180,29 @@ async function upgradePackages(specificPackage, ...flags) {
 
   output += `<br>${packagesToUpgrade.length} upgraded, 0 newly installed, 0 to remove and ${updates.length - packagesToUpgrade.length} not upgraded.<br>`;
 
-  // Calculate approximate download size
   const downloadSize = packagesToUpgrade.reduce((total, pkg) => total + Math.floor(Math.random() * 50 + 10), 0);
   output += `Need to get ${downloadSize} kB of archives.<br>`;
   output += `After this operation, ${Math.floor(downloadSize * 0.3)} kB of additional disk space will be used.<br><br>`;
 
-  // If no -y flag, prompt for confirmation
   if (!hasYesFlag) {
     output += '<strong>Do you want to continue? [Y/n]</strong><br>';
     output += '<em>Use "simpack upgrade -y" to skip this prompt in the future.</em><br><br>';
 
-    // Set up interactive prompt state
     window.simpackUpgradeState = {
       packagesToUpgrade: packagesToUpgrade,
       pendingOutput: output,
       waitingForConfirmation: true
     };
 
-    // Register event listener for the confirmation
     setupUpgradeConfirmationHandler();
 
     return output + '<em>Waiting for confirmation...</em>';
   }
 
-  // Proceed with upgrade (either -y flag was used or this is a confirmed upgrade)
   return await performUpgrade(packagesToUpgrade, output);
 }
 
 function setupUpgradeConfirmationHandler() {
-  // Remove any existing listener
   if (window.upgradeConfirmationHandler) {
     document.removeEventListener('keydown', window.upgradeConfirmationHandler);
   }
@@ -235,7 +214,6 @@ function setupUpgradeConfirmationHandler() {
 
     const key = event.key.toLowerCase();
 
-    // Handle Ctrl+C to cancel
     if (event.ctrlKey && key === 'c') {
       event.preventDefault();
 
@@ -244,12 +222,10 @@ function setupUpgradeConfirmationHandler() {
       terminal.innerHTML += '<div>Interrupt: upgrade cancelled by user.</div>';
       terminal.scrollTop = terminal.scrollHeight;
 
-      // Clean up
       window.simpackUpgradeState = null;
       document.removeEventListener('keydown', window.upgradeConfirmationHandler);
       window.upgradeConfirmationHandler = null;
 
-      // Re-focus command input
       const commandInput = document.getElementById('commandInput');
       if (commandInput) {
         commandInput.focus();
@@ -261,7 +237,6 @@ function setupUpgradeConfirmationHandler() {
     if (key === 'y' || key === 'enter') {
       event.preventDefault();
 
-      // User confirmed, proceed with upgrade
       const terminal = document.getElementById('terminal');
       terminal.innerHTML += '<div><strong>Y</strong></div>';
       terminal.innerHTML += '<div>Proceeding with upgrade...</div>';
@@ -274,12 +249,10 @@ function setupUpgradeConfirmationHandler() {
       terminal.innerHTML += `<div>${result}</div>`;
       terminal.scrollTop = terminal.scrollHeight;
 
-      // Clean up
       window.simpackUpgradeState = null;
       document.removeEventListener('keydown', window.upgradeConfirmationHandler);
       window.upgradeConfirmationHandler = null;
 
-      // Re-focus command input
       const commandInput = document.getElementById('commandInput');
       if (commandInput) {
         commandInput.focus();
@@ -288,18 +261,15 @@ function setupUpgradeConfirmationHandler() {
     } else if (key === 'n') {
       event.preventDefault();
 
-      // User declined
       const terminal = document.getElementById('terminal');
       terminal.innerHTML += '<div><strong>N</strong></div>';
       terminal.innerHTML += '<div>Abort.</div>';
       terminal.scrollTop = terminal.scrollHeight;
 
-      // Clean up
       window.simpackUpgradeState = null;
       document.removeEventListener('keydown', window.upgradeConfirmationHandler);
       window.upgradeConfirmationHandler = null;
 
-      // Re-focus command input
       const commandInput = document.getElementById('commandInput');
       if (commandInput) {
         commandInput.focus();
@@ -313,12 +283,10 @@ function setupUpgradeConfirmationHandler() {
 async function performUpgrade(packagesToUpgrade, initialOutput) {
   let output = '';
 
-  // Simulate upgrade process
   for (const pkg of packagesToUpgrade) {
     try {
       output += `<br>Get:1 simulacli-repo ${pkg.name} ${pkg.newVersion} [${Math.floor(Math.random() * 50 + 10)} kB]<br>`;
 
-      // Re-install the package (this will get the latest version)
       const installResult = await installPackageInternal(pkg.name, true);
       if (installResult.success) {
         output += `Setting up ${pkg.name} (${pkg.newVersion})...<br>`;
@@ -334,7 +302,6 @@ async function performUpgrade(packagesToUpgrade, initialOutput) {
   output += '<br><strong>Package upgrades completed successfully.</strong><br>';
   output += '<em>Run "simpack reload" or "reboot" to activate updated packages.</em>';
 
-  // Clear update cache since we've processed upgrades
   delete window.availableUpdates;
 
   return output;
@@ -358,7 +325,6 @@ async function installPackageInternal(packageName, isUpgrade = false) {
     let output = '';
 
     if (!isUpgrade) {
-      // Show installation progress for new installs
       const terminal = document.getElementById('terminal');
       terminal.innerHTML += `<div>Reading package lists... Done</div>`;
       terminal.innerHTML += `<div>Building dependency tree... Done</div>`;
@@ -371,7 +337,6 @@ async function installPackageInternal(packageName, isUpgrade = false) {
       terminal.innerHTML += `<div>Get:1 simulacli-repo ${packageName} [0 B]</div>`;
     }
 
-    // Try to find the package in configured repositories
     const repositories = getRepositories();
     let packageCode = null;
     let foundInRepo = null;
@@ -379,7 +344,6 @@ async function installPackageInternal(packageName, isUpgrade = false) {
 
     for (const repo of repositories) {
       try {
-        // First try to get package info from packages.json
         const listUrl = `${repo.url}packages.json`;
         const listResponse = await fetch(listUrl);
 
@@ -388,7 +352,6 @@ async function installPackageInternal(packageName, isUpgrade = false) {
           packageInfo = packageList.find(pkg => pkg.name === packageName);
         }
 
-        // Then try to get the actual package code
         const packageUrl = `${repo.url}${packageName}.js`;
         console.log(`Trying to fetch: ${packageUrl}`);
         const response = await fetch(packageUrl);
@@ -412,7 +375,6 @@ async function installPackageInternal(packageName, isUpgrade = false) {
       };
     }
 
-    // Validate that the package has the correct structure
     if (!validatePackageCode(packageCode, packageName)) {
       return {
         success: false,
@@ -420,7 +382,6 @@ async function installPackageInternal(packageName, isUpgrade = false) {
       };
     }
 
-    // Store the package in memory and localStorage
     window.installedPackages[packageName] = {
       code: packageCode,
       installedAt: new Date().toISOString(),
@@ -457,7 +418,6 @@ async function installPackageInternal(packageName, isUpgrade = false) {
 }
 
 function validatePackageCode(code, packageName) {
-  // Basic validation to ensure the package has the correct structure
   const hasDefaultExport = code.includes('export default') && code.includes(`function ${packageName}`);
   const hasHelpProperty = code.includes('.help =');
   return hasDefaultExport && hasHelpProperty;
@@ -508,7 +468,6 @@ async function searchPackages(searchTerm) {
 
   for (const repo of repositories) {
     try {
-      // Try to fetch a package list from the repository
       const listUrl = `${repo.url}packages.json`;
       const response = await fetch(listUrl);
 
@@ -596,11 +555,9 @@ function testPackage(packageName) {
   output += `[INFO] Installed: ${new Date(packageInfo.installedAt).toLocaleString()}<br>`;
   output += `[INFO] Repository: ${packageInfo.repository}<br><br>`;
 
-  // Test if the code can be executed
   try {
     output += `[CODE] Code preview:<br><pre style="font-size: 12px; background: #333; padding: 10px; margin: 5px 0;">${packageInfo.code.substring(0, 300)}${packageInfo.code.length > 300 ? '...' : ''}</pre>`;
 
-    // Test validation
     const isValid = validatePackageCode(packageInfo.code, packageName);
     output += `[VALIDATION] Status: ${isValid ? 'PASSED' : 'FAILED'}<br>`;
 
@@ -611,16 +568,13 @@ function testPackage(packageName) {
 }
 
 function transformES6ModuleForEval(code, packageName) {
-  // Replace export default async function packageName with just the function
   let transformedCode = code;
 
-  // Remove export default and replace with direct function assignment
   transformedCode = transformedCode.replace(
     /export\s+default\s+async\s+function\s+(\w+)/,
     'async function $1'
   );
 
-  // Add assignment at the end
   transformedCode += `\n\nwindow.tempPackage = ${packageName};\nwindow.tempPackageHelp = ${packageName}.help;`;
 
   return transformedCode;
@@ -638,12 +592,10 @@ async function reloadPackages() {
     try {
       const packageInfo = window.installedPackages[packageName];
 
-      // Transform ES6 module code for eval
       const transformedCode = transformES6ModuleForEval(packageInfo.code, packageName);
 
       console.log(`[RELOAD] Attempting to load ${packageName} with transformed code`);
 
-      // Execute the transformed code
       eval(transformedCode);
 
       if (window.tempPackage && typeof window.tempPackage === 'function') {
@@ -651,7 +603,6 @@ async function reloadPackages() {
         commands[packageName].help = window.tempPackageHelp || 'No description available.';
         output += `[OK] Reloaded: ${packageName}<br>`;
 
-        // Clean up
         delete window.tempPackage;
         delete window.tempPackageHelp;
       } else {
@@ -666,4 +617,4 @@ async function reloadPackages() {
   return output + '<br>Package reload complete. Try your commands now!';
 }
 
-simpack.help = "SimPack - SimulaCLI Package Manager - install, remove and manage packages. Usage: simpack [get|install|list|remove|update|upgrade|search|repo|debug|test|reload] [package-name] [-y]. Use -y flag with upgrade to skip confirmation prompt.";
+simpack.help = "SimPack - SimulaCLI Package Manager - install, remove and manage packages. Usage: simpack [get|install|list|remove|update|upgrade|search|repo|debug|test|reload] [package-name] [-y]";

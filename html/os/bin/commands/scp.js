@@ -5,7 +5,6 @@ import { checkAccess } from '../../superuser.js';
 export default async function scp(fileName) {
   const file = currentDirectory.children && currentDirectory.children[fileName];
   if (file && file.type === "file" && file.downloadable) {
-    // Check file access permissions
     const accessCheck = checkAccess(file);
     if (!accessCheck.hasAccess) {
       return `scp: ${fileName}: ${accessCheck.message}`;
@@ -24,4 +23,4 @@ export default async function scp(fileName) {
   }
 }
 
-scp.help = "Download a file if that file is available for download.";
+scp.help = "Download an available file.";

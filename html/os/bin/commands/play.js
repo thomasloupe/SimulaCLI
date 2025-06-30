@@ -4,7 +4,6 @@ import { checkAccess } from '../../superuser.js';
 export default async function play(fileName) {
   const file = currentDirectory.children && currentDirectory.children[fileName];
   if (file && file.playable) {
-    // Check file access permissions
     const accessCheck = checkAccess(file);
     if (!accessCheck.hasAccess) {
       return `play: ${fileName}: ${accessCheck.message}`;

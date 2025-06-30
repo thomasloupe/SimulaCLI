@@ -5,11 +5,9 @@ export default async function logout() {
   const currentUser = getCurrentUser();
 
   if (currentUser === 'root') {
-    // If we're root, switch back to simulaCLI user
     const result = switchToUser();
     return `logout\n${result.message}`;
   } else {
-    // If we're simulaCLI user, exit the system
     resetToRoot();
     window.dispatchEvent(new CustomEvent('exitCommandTriggered'));
     return '';

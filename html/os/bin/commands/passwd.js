@@ -3,7 +3,6 @@ import { changePassword, getCurrentUser, isCurrentlyRoot } from '../../superuser
 export default async function passwd(...args) {
   const targetUser = args[0] || getCurrentUser();
 
-  // Only allow changing root password, and only if running as root
   if (targetUser !== 'root' && targetUser !== getCurrentUser()) {
     return `passwd: user '${targetUser}' does not exist`;
   }
@@ -16,7 +15,6 @@ export default async function passwd(...args) {
     return 'passwd: Regular user password changes not supported. Use "sudo passwd" for root password.';
   }
 
-  // Handle root password change
   if (targetUser === 'root' && isCurrentlyRoot()) {
     return await handleRootPasswordChange();
   }
@@ -26,7 +24,6 @@ export default async function passwd(...args) {
 
 async function handleRootPasswordChange() {
   return new Promise((resolve) => {
-    // Set up password change flow
     window.passwdState = {
       active: true,
       step: 'current', // 'current' -> 'new' -> 'confirm'
@@ -36,7 +33,6 @@ async function handleRootPasswordChange() {
       confirmPassword: ''
     };
 
-    // Disable normal command input
     const commandInput = document.getElementById('commandInput');
     if (commandInput) {
       commandInput.type = 'password';
@@ -44,10 +40,8 @@ async function handleRootPasswordChange() {
       commandInput.value = '';
     }
 
-    // Set up event listener
     setupPasswdHandler();
 
-    // Show prompt
     const terminal = document.getElementById('terminal');
     if (terminal) {
       terminal.innerHTML += '<div>Changing password for root.</div>';
@@ -58,7 +52,6 @@ async function handleRootPasswordChange() {
 }
 
 function setupPasswdHandler() {
-  // Remove any existing listener
   if (window.passwdHandler) {
     document.removeEventListener('keydown', window.passwdHandler);
   }
@@ -71,7 +64,6 @@ function setupPasswdHandler() {
     const commandInput = document.getElementById('commandInput');
     const terminal = document.getElementById('terminal');
 
-    // Handle Ctrl+C to cancel
     if (event.ctrlKey && event.key.toLowerCase() === 'c') {
       event.preventDefault();
 
@@ -79,7 +71,6 @@ function setupPasswdHandler() {
       terminal.innerHTML += '<div>passwd: Operation cancelled</div>';
       terminal.scrollTop = terminal.scrollHeight;
 
-      // Restore normal input
       restoreNormalInput();
       window.passwdState.resolve('passwd: Operation cancelled');
       cleanup();
@@ -132,7 +123,6 @@ function setupPasswdHandler() {
               return;
             }
 
-            // Attempt to change password
             const result = await changePassword(
               window.passwdState.currentPassword,
               window.passwdState.newPassword
@@ -141,7 +131,6 @@ function setupPasswdHandler() {
             if (result.success) {
               terminal.innerHTML += '<div>passwd: password updated successfully</div>';
 
-              // Show instructions for persisting the change
               if (result.base64) {
                 terminal.innerHTML += '<div><br><strong>IMPORTANT:</strong></div>';
                 terminal.innerHTML += '<div>To persist this password change, save the following</div>';
@@ -199,4 +188,4 @@ function cleanup() {
   }
 }
 
-passwd.help = "Change user password. Usage: passwd [username]. Use 'sudo passwd' to change root password. Valid users: root, simulaclient";
+passwd.help = "Change user password. Usage: passwd [username]";
