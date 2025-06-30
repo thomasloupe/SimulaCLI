@@ -77,7 +77,8 @@ export default async function curl(...args) {
         'User-Agent': userAgent,
         ...headers
       },
-      redirect: followRedirects ? 'follow' : 'manual'
+      redirect: followRedirects ? 'follow' : 'manual',
+      mode: 'cors'
     };
 
     if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
@@ -92,8 +93,9 @@ export default async function curl(...args) {
     fetchOptions.signal = controller.signal;
 
     if (verbose && !silent) {
-      const verboseOutput = generateVerboseOutput(url, fetchOptions);
-      return verboseOutput;
+      const urlObj = new URL(url);
+      let verboseOutput = `* Trying ${urlObj.hostname}...\n`;
+      if (!silent) console.log(`[CURL] Attempting ${method} request to ${url}`);
     }
 
     const response = await fetch(url, fetchOptions);
@@ -104,55 +106,86 @@ export default async function curl(...args) {
 
     let output = '';
 
-    if (showHeaders || headersOnly) {
-      output += `HTTP/${response.type === 'opaque' ? '1.1' : '2'} ${response.status} ${response.statusText}\n`;
+    if (verbose && !silent) {
+      const urlObj = new URL(url);
+      output += `* Trying ${urlObj.hostname}...\n`;
+      output += `* Connected to ${urlObj.hostname} port ${urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80)}\n`;
+
+      if (urlObj.protocol === 'https:') {
+        output += `* TLS connection established\n`;
+      }
+
+      output += `> ${method} ${urlObj.pathname}${urlObj.search} HTTP/1.1\n`;
+      output += `> Host: ${urlObj.hostname}\n`;
+
+      for (const [key, value] of Object.entries(fetchOptions.headers)) {
+        output += `> ${key}: ${value}\n`;
+      }
+
+      output += `>\n`;
+      output += `< HTTP/1.1 ${response.status} ${response.statusText}\n`;
 
       for (const [key, value] of response.headers.entries()) {
-        output += `${key}: ${value}\n`;
+        output += `< ${key}: ${value}\n`;
       }
-      output += '\n';
+      output += `<\n`;
     }
 
-    if (!headersOnly && response.ok) {
+    if (showHeaders || headersOnly) {
+      if (!verbose) {
+        output += `HTTP/1.1 ${response.status} ${response.statusText}\n`;
+        for (const [key, value] of response.headers.entries()) {
+          output += `${key}: ${value}\n`;
+        }
+        output += '\n';
+      }
+    }
+
+    if (!headersOnly) {
       const contentType = response.headers.get('content-type') || '';
 
-      if (contentType.includes('text/') || contentType.includes('application/json') || contentType.includes('application/xml')) {
-        const text = await response.text();
-        if (outputFile) {
-          await writeToFile(outputFile, text);
-          output += `Downloaded to: ${outputFile}`;
-        } else {
-          output += text;
+      if (contentType.includes('text/') || contentType.includes('application/json') ||
+          contentType.includes('application/xml') || contentType.includes('application/javascript')) {
+        try {
+          const text = await response.text();
+          if (outputFile) {
+            await writeToFile(outputFile, text);
+            if (!silent) output += `\nDownloaded to: ${outputFile}`;
+          } else {
+            output += text;
+          }
+        } catch (textError) {
+          output += `[Error reading response body: ${textError.message}]`;
         }
       } else {
         const size = response.headers.get('content-length') || 'unknown';
         if (outputFile) {
-          output += `Binary data saved to: ${outputFile} (${size} bytes)`;
+          if (!silent) output += `\nBinary data saved to: ${outputFile} (${size} bytes)`;
         } else {
           output += `[Binary data - ${size} bytes] Use -o to save to file`;
         }
       }
-    } else if (!response.ok && !headersOnly) {
-      output += `curl: (${response.status}) ${response.statusText}`;
     }
 
-    if (!silent && !outputFile) {
-      output += `\n\n% Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n`;
+    if (!silent && !outputFile && !verbose) {
+      const contentLength = response.headers.get('content-length') || output.length;
+      const speed = Math.round(contentLength / (duration / 1000));
+      output += `\n\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n`;
       output += `                                 Dload  Upload   Total   Spent    Left  Speed\n`;
-      output += `100   ${response.headers.get('content-length') || '---'}      0     0      0      0 --:--:-- ${(duration/1000).toFixed(2)}s --:--:--     0`;
+      output += `100  ${contentLength.toString().padStart(5)}      0     0   ${speed.toString().padStart(6)}      0 --:--:-- ${(duration/1000).toFixed(2)}s --:--:--  ${speed}`;
     }
 
-    return output;
+    return output.replace(/\n/g, '<br>');
 
   } catch (error) {
     if (error.name === 'AbortError') {
       return `curl: (28) Operation timed out after ${timeout/1000} seconds`;
-    } else if (error.message.includes('CORS')) {
+    } else if (error.message.includes('CORS') || error.message.includes('cors')) {
       return handleCorsError(url, method);
-    } else if (error.message.includes('network')) {
+    } else if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
       return `curl: (6) Could not resolve host: ${new URL(url).hostname}`;
     } else {
-      return `curl: (7) Failed to connect to ${new URL(url).hostname}`;
+      return `curl: (7) Failed to connect to ${new URL(url).hostname}: ${error.message}`;
     }
   }
 }
@@ -271,4 +304,4 @@ Examples:
   curl -H "Authorization: Bearer token" https://api.example.com`;
 }
 
-curl.help = "Transfer data from/to servers. Usage: curl [options] <url>.";
+curl.help = "Transfer data from/to servers. Usage: curl [options] <url>";
