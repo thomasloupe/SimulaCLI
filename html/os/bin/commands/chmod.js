@@ -2,8 +2,12 @@ import { currentDirectory, currentPath, fileSystem, saveFilesystem } from '../fi
 import { checkAccess, getCurrentUser, isCurrentlyRoot } from '../../superuser.js';
 
 export default async function chmod(...args) {
+  if (args.length === 0) {
+    return 'chmod: missing operand<br>Usage: chmod [permissions] [file1] [file2] ...<br>Flags: 755, +x, -w, u+rw, +v/-v (viewable), +p/-p (playable), +d/-d (downloadable)';
+  }
+
   if (args.length < 2) {
-    return 'chmod: missing operand<br>Usage: chmod [permissions] [file1] [file2] ...';
+    return 'chmod: missing file operand<br>Usage: chmod [permissions] [file1] [file2] ...';
   }
 
   const permissionArg = args[0];
@@ -31,8 +35,7 @@ export default async function chmod(...args) {
         continue;
       }
 
-      const newPermissions = applyPermissions(fileItem.permissions, parsedPermissions);
-      fileItem.permissions = newPermissions;
+      applyPermissions(fileItem, parsedPermissions);
       fileItem.modified = new Date().toISOString();
 
       updateFilesystemAtPath(currentPath, filename, fileItem);
@@ -67,23 +70,36 @@ function parsePermissions(permArg) {
     };
   }
 
-  if (/^[ugoa]*[+-=][rwx]+$/.test(permArg)) {
-    const match = permArg.match(/^([ugoa]*)([+-=])([rwx]+)$/);
+  if (/^[ugoa]*[+-=][rwxvpd]+$/.test(permArg)) {
+    const match = permArg.match(/^([ugoa]*)([+-=])([rwxvpd]+)$/);
     if (!match) {
       return { valid: false, error: 'Invalid symbolic notation' };
     }
 
     const [, users, operation, permissions] = match;
+
+    const simulacliFlags = [];
+    const traditionalPerms = [];
+
+    for (const perm of permissions) {
+      if (['v', 'p', 'd'].includes(perm)) {
+        simulacliFlags.push(perm);
+      } else if (['r', 'w', 'x'].includes(perm)) {
+        traditionalPerms.push(perm);
+      }
+    }
+
     return {
       valid: true,
       type: 'symbolic',
       users: users || 'a',
       operation,
-      permissions
+      permissions: traditionalPerms.join(''),
+      simulacliFlags: simulacliFlags
     };
   }
 
-  return { valid: false, error: 'Invalid permission format. Use octal (e.g., 755) or symbolic (e.g., +x, u+rw)' };
+  return { valid: false, error: 'Invalid permission format. Use octal (e.g., 755) or symbolic (e.g., +x, u+rw, +v, -p, +d)' };
 }
 
 function convertOctalToPermString(octal) {
@@ -94,43 +110,89 @@ function convertOctalToPermString(octal) {
   return perm;
 }
 
-function applyPermissions(currentPerm, parsedPerm) {
+function applyPermissions(fileItem, parsedPerm) {
   if (parsedPerm.type === 'octal') {
     const newPerm = `${parsedPerm.owner}${parsedPerm.group}${parsedPerm.other}`;
-    return newPerm.replace(/-/g, '').replace(/r/g, 'r').replace(/w/g, 'w').replace(/x/g, 'x');
+    fileItem.permissions = newPerm.replace(/-/g, '').replace(/r/g, 'r').replace(/w/g, 'w').replace(/x/g, 'x');
+    return;
   }
 
   if (parsedPerm.type === 'symbolic') {
-    let permArray = ['r', 'w', 'x'];
-    let hasRead = currentPerm.includes('r');
-    let hasWrite = currentPerm.includes('w');
-    let hasExecute = currentPerm.includes('x');
+    if (parsedPerm.permissions) {
+      let hasRead = fileItem.permissions.includes('r');
+      let hasWrite = fileItem.permissions.includes('w');
+      let hasExecute = fileItem.permissions.includes('x');
 
-    const targetUsers = parsedPerm.users.includes('a') || parsedPerm.users === '' ? 'ugo' : parsedPerm.users;
+      const targetUsers = parsedPerm.users.includes('a') || parsedPerm.users === '' ? 'ugo' : parsedPerm.users;
 
-    for (const perm of parsedPerm.permissions) {
-      if (targetUsers.includes('u') || targetUsers.includes('a')) {
+      for (const perm of parsedPerm.permissions) {
+        if (targetUsers.includes('u') || targetUsers.includes('a')) {
+          if (parsedPerm.operation === '+') {
+            if (perm === 'r') hasRead = true;
+            if (perm === 'w') hasWrite = true;
+            if (perm === 'x') hasExecute = true;
+          } else if (parsedPerm.operation === '-') {
+            if (perm === 'r') hasRead = false;
+            if (perm === 'w') hasWrite = false;
+            if (perm === 'x') hasExecute = false;
+          } else if (parsedPerm.operation === '=') {
+            hasRead = perm === 'r' || parsedPerm.permissions.includes('r');
+            hasWrite = perm === 'w' || parsedPerm.permissions.includes('w');
+            hasExecute = perm === 'x' || parsedPerm.permissions.includes('x');
+          }
+        }
+      }
+
+      let newPerm = '';
+      if (hasRead) newPerm += 'r';
+      if (hasWrite) newPerm += 'w';
+      if (hasExecute) newPerm += 'x';
+
+      fileItem.permissions = newPerm || '-';
+    }
+
+    if (parsedPerm.simulacliFlags && parsedPerm.simulacliFlags.length > 0) {
+      for (const flag of parsedPerm.simulacliFlags) {
         if (parsedPerm.operation === '+') {
-          if (perm === 'r') hasRead = true;
-          if (perm === 'w') hasWrite = true;
-          if (perm === 'x') hasExecute = true;
+          switch (flag) {
+            case 'v':
+              fileItem.viewable = true;
+              break;
+            case 'p':
+              fileItem.playable = true;
+              break;
+            case 'd':
+              fileItem.downloadable = true;
+              break;
+          }
         } else if (parsedPerm.operation === '-') {
-          if (perm === 'r') hasRead = false;
-          if (perm === 'w') hasWrite = false;
-          if (perm === 'x') hasExecute = false;
+          switch (flag) {
+            case 'v':
+              fileItem.viewable = false;
+              break;
+            case 'p':
+              fileItem.playable = false;
+              break;
+            case 'd':
+              fileItem.downloadable = false;
+              break;
+          }
+        } else if (parsedPerm.operation === '=') {
+          switch (flag) {
+            case 'v':
+              fileItem.viewable = true;
+              break;
+            case 'p':
+              fileItem.playable = true;
+              break;
+            case 'd':
+              fileItem.downloadable = true;
+              break;
+          }
         }
       }
     }
-
-    let newPerm = '';
-    if (hasRead) newPerm += 'r';
-    if (hasWrite) newPerm += 'w';
-    if (hasExecute) newPerm += 'x';
-
-    return newPerm || '-';
   }
-
-  return currentPerm;
 }
 
 function canModifyPermissions(fileItem, currentUser) {
@@ -171,4 +233,4 @@ function updateFilesystemAtPath(path, filename, fileData) {
   }
 }
 
-chmod.help = "Change file permissions. Usage: chmod [permissions] [file1] [file2] ...";
+chmod.help = "Change file permissions. Usage: chmod [permissions] [file1] [file2] ... Flags: 755, +x, -w, +v (viewable), +p (playable), +d (downloadable)";
