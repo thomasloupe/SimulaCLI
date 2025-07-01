@@ -3,4 +3,4 @@ export default async function whoami() {
   return getCurrentUser();
 }
 
-whoami.help = "Display the current user.";
+whoami.help = "Display the current user. Usage: whoami";

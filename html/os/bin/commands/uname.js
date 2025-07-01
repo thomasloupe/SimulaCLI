@@ -93,4 +93,4 @@ function detectProcessor() {
   }
 }
 
-uname.help = "Display system information. Usage: uname [-asnrvmpio] or uname --all";
+uname.help = "Display system information. Usage: uname [-asnrvmpio]";

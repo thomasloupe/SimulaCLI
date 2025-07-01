@@ -12,4 +12,4 @@ export default async function ll() {
   }).join('<br>');
 }
 
-ll.help = "List directory contents with detailed information.";
+ll.help = "List directory contents with detailed information. Usage: ll";

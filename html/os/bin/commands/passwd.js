@@ -26,7 +26,7 @@ async function handleRootPasswordChange() {
   return new Promise((resolve) => {
     window.passwdState = {
       active: true,
-      step: 'current', // 'current' -> 'new' -> 'confirm'
+      step: 'current',
       resolve: resolve,
       currentPassword: '',
       newPassword: '',
@@ -111,7 +111,6 @@ function setupPasswdHandler() {
           case 'confirm':
             window.passwdState.confirmPassword = input;
 
-            // Validate passwords match
             if (window.passwdState.newPassword !== window.passwdState.confirmPassword) {
               terminal.innerHTML += '<div>Sorry, passwords do not match.</div>';
               terminal.innerHTML += '<div>passwd: Authentication token manipulation error</div>';

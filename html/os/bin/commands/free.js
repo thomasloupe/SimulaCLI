@@ -115,4 +115,4 @@ function formatHumanReadable(bytes) {
   }
 }
 
-free.help = "Display memory usage. Usage: free [-bkmghtwv] (b=bytes, k=kilo, m=mega, g=giga, h=human, t=total, w=wide)";
+free.help = "Display memory usage. Usage: free [-bkmghtwv]";

@@ -119,4 +119,4 @@ function createPaginator(lines, filename) {
   return '';
 }
 
-less.help = "Page through text files. Usage: less [file] or command | less. Controls: SPACE=next page, b=back, q=quit, g=first, G=last, h=help";
+less.help = "Page through text files. Usage: less [file] or command | less";

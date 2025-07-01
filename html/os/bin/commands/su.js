@@ -165,4 +165,4 @@ function setupPasswordHandler() {
   document.addEventListener('keydown', window.suPasswordHandler);
 }
 
-su.help = "Switch user. Usage: su [user], su -, su - user, su user";
+su.help = "Switch user. Usage: su [user] or su - [user]";

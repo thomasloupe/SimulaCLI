@@ -30,4 +30,4 @@ export default async function cat(fileName) {
   }
 }
 
-cat.help = "Display the content of a file.";
+cat.help = "Display the content of a file. Usage: cat [file]";

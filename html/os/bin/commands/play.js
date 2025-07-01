@@ -23,4 +23,4 @@ export default async function play(fileName) {
   }
 }
 
-play.help = "Plays an audio/video file in a new tab.";
+play.help = "Play an audio/video file. Usage: play [file]";

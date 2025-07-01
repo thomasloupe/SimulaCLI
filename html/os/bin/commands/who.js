@@ -95,4 +95,4 @@ function getPid() {
   return Math.floor(Math.random() * 30000 + 1000);
 }
 
-who.help = "Show logged in users. Usage: who [-abuHr] (a=all, b=boot time, u=users with idle time, H=heading, r=runlevel)";
+who.help = "Show logged in users. Usage: who [-abuHr]";

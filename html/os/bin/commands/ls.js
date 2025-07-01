@@ -8,4 +8,4 @@ export default async function ls() {
   }).join('</br>');
 }
 
-ls.help = "List directory contents.";
+ls.help = "List directory contents. Usage: ls";

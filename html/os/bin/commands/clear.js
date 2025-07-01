@@ -3,4 +3,4 @@ export default async function clear() {
   return '';
 }
 
-clear.help = "Clear the terminal screen.";
+clear.help = "Clear the terminal screen. Usage: clear";

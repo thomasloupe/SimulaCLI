@@ -124,4 +124,4 @@ function isValidIP(ip) {
   });
 }
 
-ip_addr.help = "Display IP address information using WebRTC discovery.";
+ip_addr.help = "Display IP address information. Usage: ip addr";

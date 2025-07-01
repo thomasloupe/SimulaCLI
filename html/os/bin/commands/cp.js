@@ -244,4 +244,4 @@ function saveFilesystemToStorage() {
   }
 }
 
-cp.help = "Copy files and directories. Usage: cp [-r] [source] [destination].";
+cp.help = "Copy files and directories. Usage: cp [-r] [source] [destination]";

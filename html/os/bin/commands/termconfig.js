@@ -558,4 +558,4 @@ if (typeof window !== 'undefined') {
 
 export { applyVisualSettings };
 
-termconfig.help = "Manage terminal behavior and appearance settings (audio, simulations, colors, URL links, etc). Usage: termconfig [setting] [value]";
+termconfig.help = "Manage terminal behavior and appearance settings. Usage: termconfig [setting] [value]";

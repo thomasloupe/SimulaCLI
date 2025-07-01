@@ -4,4 +4,4 @@ export default async function more(...args) {
   return await less(...args);
 }
 
-more.help = "Page through text files (alias for less). Usage: more [file] or command | more";
+more.help = "Page through text files. Usage: more [file] or command | more";

@@ -1,4 +1,4 @@
-// grep.js - Search through text (works with pipes)
+// grep.js - Search through text
 import { currentDirectory } from '../filesystem.js';
 
 export default async function grep(...args) {
@@ -9,7 +9,6 @@ export default async function grep(...args) {
   const pattern = args[0];
   const filename = args[1];
 
-  // If a filename is provided, search in that file
   if (filename) {
     const file = currentDirectory.children && currentDirectory.children[filename];
     if (!file || file.type !== 'file') {
@@ -20,7 +19,6 @@ export default async function grep(...args) {
     return searchInContent(content, pattern);
   }
 
-  // If no filename, this might be piped input (the content will be in args[1] from the pipe)
   if (args.length >= 2) {
     const pipedContent = args.slice(1).join(' ');
     return searchInContent(pipedContent, pattern);
@@ -34,7 +32,6 @@ function searchInContent(content, pattern) {
     return '';
   }
 
-  // Remove HTML tags for searching but keep original for display
   const cleanContent = content.replace(/<[^>]*>/g, '');
   const lines = cleanContent.split(/\r?\n/);
 
@@ -46,7 +43,6 @@ function searchInContent(content, pattern) {
     return `grep: no matches found for '${pattern}'`;
   }
 
-  // Highlight the matches
   return matches.map(line => {
     const regex = new RegExp(`(${escapeRegex(pattern)})`, 'gi');
     const highlighted = line.replace(regex, '<span style="background-color: #ff0; color: #000;">$1</span>');

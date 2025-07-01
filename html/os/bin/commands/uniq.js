@@ -70,4 +70,4 @@ export default async function uniq(...args) {
   return results.join('<br>');
 }
 
-uniq.help = "Remove duplicate lines. Usage: uniq [-cdu] [file] or command | uniq. -c=count, -d=duplicates only, -u=unique only";
+uniq.help = "Remove duplicate lines. Usage: uniq [-cdu] [file] or command | uniq";

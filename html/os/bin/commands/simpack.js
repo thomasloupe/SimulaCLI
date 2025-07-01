@@ -5,7 +5,6 @@ import { commands } from '../../commands.js';
 function initializePackageStorage() {
   if (!window.installedPackages) {
     try {
-      // Try to load from localStorage if available
       const stored = localStorage.getItem('simulacli_packages');
       window.installedPackages = stored ? JSON.parse(stored) : {};
     } catch (error) {
@@ -617,4 +616,4 @@ async function reloadPackages() {
   return output + '<br>Package reload complete. Try your commands now!';
 }
 
-simpack.help = "SimPack - SimulaCLI Package Manager - install, remove and manage packages. Usage: simpack [get|install|list|remove|update|upgrade|search|repo|debug|test|reload] [package-name] [-y]";
+simpack.help = "SimulaCLI Package Manager. Usage: simpack [get|install|list|remove|update|upgrade|search|repo|debug|test|reload] [package-name] [-y]";

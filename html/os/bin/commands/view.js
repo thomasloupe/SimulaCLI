@@ -23,4 +23,4 @@ export default async function view(fileName) {
   }
 }
 
-view.help = "View an image file in a new tab.";
+view.help = "View an image file in a new tab. Usage: view [file]";

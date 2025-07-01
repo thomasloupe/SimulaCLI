@@ -16,4 +16,4 @@ export default async function exit() {
   }
 }
 
-exit.help = "Exit the current session. If root, switches back to simulaclient user. If simulaclient user, exits the system.";
+exit.help = "Exit the current session. Usage: exit";

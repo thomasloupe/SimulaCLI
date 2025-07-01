@@ -3,7 +3,6 @@ import { checkAccess } from '../../superuser.js';
 
 export default async function find(...args) {
   if (args.length === 0) {
-    // Default: find current directory
     return searchDirectory(currentDirectory, currentPath, {});
   }
 
@@ -11,13 +10,11 @@ export default async function find(...args) {
   let criteria = {};
   let i = 0;
 
-  // Parse arguments
   if (args[0] && !args[0].startsWith('-')) {
     searchPath = args[0];
     i = 1;
   }
 
-  // Parse search criteria
   while (i < args.length) {
     const arg = args[i];
 
@@ -70,7 +67,6 @@ export default async function find(...args) {
     }
   }
 
-  // Determine search root
   let searchRoot, searchRootPath;
 
   if (searchPath === '.' || searchPath === './') {
@@ -80,7 +76,6 @@ export default async function find(...args) {
     searchRoot = fileSystem['/'];
     searchRootPath = '/';
   } else {
-    // Try to find the specified path
     const found = findDirectoryByPath(searchPath);
     if (!found) {
       return `find: '${searchPath}': No such file or directory`;
@@ -92,40 +87,32 @@ export default async function find(...args) {
   return searchDirectory(searchRoot, searchRootPath, criteria, 0);
 }
 
-// Search directory recursively
 function searchDirectory(directory, dirPath, criteria, depth = 0) {
   let results = [];
 
-  // Check max depth
   if (criteria.maxdepth !== undefined && depth > criteria.maxdepth) {
     return '';
   }
 
-  // Check if current directory itself matches (for depth > 0)
   if (depth > 0 && matchesCriteria('', directory, criteria)) {
     results.push(dirPath);
   } else if (depth === 0) {
-    // Always include the search root path
     results.push(dirPath);
   }
 
-  // Check access permissions
   const accessCheck = checkAccess(directory);
   if (!accessCheck.hasAccess) {
     return results.join('<br>');
   }
 
-  // Search children
   if (directory.children) {
     for (const [itemName, item] of Object.entries(directory.children)) {
       const itemPath = dirPath === '/' ? `/${itemName}` : `${dirPath}/${itemName}`;
 
-      // Check if item matches criteria
       if (matchesCriteria(itemName, item, criteria)) {
         results.push(itemPath);
       }
 
-      // Recursively search directories
       if (item.type === 'directory' && (!criteria.maxdepth || depth < criteria.maxdepth)) {
         const subResults = searchDirectory(item, itemPath, criteria, depth + 1);
         if (subResults) {
@@ -138,14 +125,12 @@ function searchDirectory(directory, dirPath, criteria, depth = 0) {
   return results.filter(r => r !== '').join('<br>');
 }
 
-// Check if an item matches the search criteria
 function matchesCriteria(itemName, item, criteria) {
   // Type filter
   if (criteria.type && item.type !== criteria.type) {
     return false;
   }
 
-  // Name filter (supports basic wildcards)
   if (criteria.name) {
     const pattern = criteria.name.replace(/\*/g, '.*').replace(/\?/g, '.');
     const regex = new RegExp(`^${pattern}$`, 'i');
@@ -154,7 +139,6 @@ function matchesCriteria(itemName, item, criteria) {
     }
   }
 
-  // Size filter (basic implementation)
   if (criteria.size) {
     const sizeStr = criteria.size;
     const sizeMatch = sizeStr.match(/^([+-]?)(\d+)([ckMG]?)$/);
@@ -184,7 +168,6 @@ function matchesCriteria(itemName, item, criteria) {
   return true;
 }
 
-// Find a directory by path
 function findDirectoryByPath(path) {
   try {
     let current = fileSystem['/'];
@@ -194,7 +177,6 @@ function findDirectoryByPath(path) {
       return { directory: current, path: currentPath };
     }
 
-    // Handle relative paths
     if (!path.startsWith('/')) {
       current = currentDirectory;
       currentPath = currentPath;
@@ -204,13 +186,11 @@ function findDirectoryByPath(path) {
 
     for (const segment of segments) {
       if (segment === '..') {
-        // Go up one directory
         if (currentPath !== '/') {
           const pathParts = currentPath.split('/').filter(Boolean);
           pathParts.pop();
           currentPath = '/' + pathParts.join('/');
 
-          // Navigate to parent in filesystem
           current = fileSystem['/'];
           for (const part of pathParts) {
             if (current.children && current.children[part]) {
@@ -221,7 +201,6 @@ function findDirectoryByPath(path) {
           }
         }
       } else if (segment === '.') {
-        // Stay in current directory
         continue;
       } else {
         // Navigate to child directory

@@ -5,9 +5,7 @@ export default async function sudo(...args) {
     return 'sudo: no command specified<br>Usage: sudo [command] [arguments...]';
   }
 
-  // Check if already root
   if (isCurrentlyRoot()) {
-    // Already root, just execute the command directly
     const { executeCommand } = await import('../../commands.js');
     const commandLine = args.join(' ');
     return await executeCommand(commandLine);

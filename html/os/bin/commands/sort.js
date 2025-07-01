@@ -62,4 +62,4 @@ export default async function sort(...args) {
   return lines.join('<br>');
 }
 
-sort.help = "Sort lines of text. Usage: sort [-rnu] [file] or command | sort. -r=reverse, -n=numeric, -u=unique";
+sort.help = "Sort lines of text. Usage: sort [-rnu] [file] or command | sort";

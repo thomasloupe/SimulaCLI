@@ -148,4 +148,4 @@ function scrollToBottom() {
   }, 100);
 }
 
-reboot.help = "Reboot the Operating System.";
+reboot.help = "Reboot the Operating System. Usage: reboot";

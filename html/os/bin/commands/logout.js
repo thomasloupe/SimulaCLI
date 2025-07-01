@@ -14,4 +14,4 @@ export default async function logout() {
   }
 }
 
-logout.help = "Logout from current session or user.";
+logout.help = "Logout from current session. Usage: logout";

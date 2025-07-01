@@ -29,4 +29,4 @@ export default async function cd(directory) {
   return "";
 }
 
-cd.help = "Change the current directory.";
+cd.help = "Change the current directory. Usage: cd [directory]";

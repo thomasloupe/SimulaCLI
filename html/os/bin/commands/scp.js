@@ -25,4 +25,4 @@ export default async function scp(fileName) {
   }
 }
 
-scp.help = "Download an available file.";
+scp.help = "Download an available file. Usage: scp [file]";

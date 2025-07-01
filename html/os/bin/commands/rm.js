@@ -123,4 +123,4 @@ function saveFilesystemToStorage() {
   }
 }
 
-rm.help = "Remove files and directories. Usage: rm [-r] [-f] [file/directory1] ...";
+rm.help = "Remove files and directories. Usage: rm [-rf] [file/directory1] ...";

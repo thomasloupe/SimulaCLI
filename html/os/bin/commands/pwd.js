@@ -4,4 +4,4 @@ export default async function pwd() {
   return currentPath;
 }
 
-pwd.help = "Print working directory.";
+pwd.help = "Print working directory. Usage: pwd";

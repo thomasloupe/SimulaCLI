@@ -320,4 +320,4 @@ This is a simplified vi implementation.
 Use arrow keys to navigate in insert mode.`;
 }
 
-vi.help = "Simple text editor. Usage: vi [filename]. Commands supported: (i, :w, :q, :wq, ESC).";
+vi.help = "Simple text editor. Usage: vi [filename]";

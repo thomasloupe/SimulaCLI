@@ -6,4 +6,4 @@ export default async function shutdown() {
   return '';
 }
 
-shutdown.help = "Shutdown the Operating System.";
+shutdown.help = "Shutdown the Operating System. Usage: shutdown";
