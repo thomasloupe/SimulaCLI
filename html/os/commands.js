@@ -1,18 +1,15 @@
 import { checkAccess } from './superuser.js';
 import { fileSystem, currentPath, currentDirectory, commandHistory, loadFileSystem } from './bin/filesystem.js';
 import { hasOperators, executeWithOperators } from './operators.js';
-// Import repositories to ensure it's initialized
 import './repositories.js';
 
 loadFileSystem();
 
 export const commands = {};
 
-// Initialize package storage
 function initializePackageStorage() {
   if (!window.installedPackages) {
     try {
-      // Try to load from localStorage if available
       const stored = localStorage.getItem('simulacli_packages');
       window.installedPackages = stored ? JSON.parse(stored) : {};
       console.log('[STORAGE] Loaded packages from localStorage:', Object.keys(window.installedPackages));
@@ -26,28 +23,44 @@ function initializePackageStorage() {
 function transformES6ModuleForEval(code, packageName) {
   let transformedCode = code;
 
-  // Remove export default and replace with direct function assignment
   transformedCode = transformedCode.replace(
     /export\s+default\s+async\s+function\s+(\w+)/,
     'async function $1'
   );
 
-  // Add assignment at the end
   transformedCode += `\n\nwindow.tempPackage = ${packageName};\nwindow.tempPackageHelp = ${packageName}.help;`;
 
   return transformedCode;
+}
+
+function initializeSystemTime() {
+  if (!localStorage.getItem('simulacli_boot_time')) {
+    try {
+      localStorage.setItem('simulacli_boot_time', Date.now().toString());
+      console.log('[SYSTEM] Initialized boot time');
+    } catch (error) {
+      console.log('[SYSTEM] Could not save boot time');
+    }
+  }
+}
+
+export function resetSystemBootTime() {
+  try {
+    localStorage.setItem('simulacli_boot_time', Date.now().toString());
+    console.log('[SYSTEM] Reset boot time for reboot');
+  } catch (error) {
+    console.log('[SYSTEM] Could not reset boot time');
+  }
 }
 
 export async function importCommands() {
   try {
     console.log('[INIT] Starting command import process...');
 
-    // Initialize package storage first
     initializePackageStorage();
 
-    // Load built-in commands
     const commandFiles = [
-      'alias.js', 'awk.js', 'cat.js', 'cd.js', 'clear.js', 'cp.js', 'curl.js', 'cut.js', 'date.js',
+      'alias.js', 'awk.js', 'cat.js', 'cd.js', 'chmod.js', 'chown.js', 'clear.js', 'cp.js', 'curl.js', 'cut.js', 'date.js',
       'diff.js', 'dig.js', 'echo.js', 'exit.js', 'file.js', 'find.js', 'free.js', 'grep.js', 'head.js',
       'help.js', 'history.js', 'hostname.js', 'ifconfig.js', 'ip_addr.js', 'less.js', 'll.js',
       'logout.js', 'ls.js', 'mkdir.js', 'more.js', 'mv.js', 'nslookup.js', 'passwd.js', 'ping.js',
@@ -66,7 +79,6 @@ export async function importCommands() {
         console.log('[OK] Built-in command loaded:', commandName);
       } catch (error) {
         console.error('[FAIL] Failed to load command', file + ':', error);
-        // Don't let one failed command break the entire system
       }
     });
 
@@ -76,13 +88,11 @@ export async function importCommands() {
 
     console.log('[COMMANDS] Built-in commands loaded:', Object.keys(commands).filter(cmd => commandFiles.map(f => f.split('.')[0]).includes(cmd)));
 
-    // Load dynamically installed packages
     console.log('[PACKAGES] Loading installed packages...');
     await loadInstalledPackages();
 
     console.log('[COMPLETE] All commands imported:', Object.keys(commands).sort());
 
-    // Export for debugging
     window.debugCommands = commands;
     window.debugPackages = window.installedPackages;
 
@@ -120,7 +130,6 @@ async function loadInstalledPackages() {
           commands[packageName].help = window.tempPackageHelp || 'No description available.';
           console.log('[OK] Package loaded via transformation:', packageName);
 
-          // Clean up
           delete window.tempPackage;
           delete window.tempPackageHelp;
         } else {
@@ -129,7 +138,6 @@ async function loadInstalledPackages() {
       } catch (transformError) {
         console.log('[FALLBACK] Transformation failed for', packageName + ', trying blob import...');
 
-        // Fallback to blob method
         const blob = new Blob([packageInfo.code], { type: 'application/javascript' });
         const moduleUrl = URL.createObjectURL(blob);
 
@@ -162,7 +170,6 @@ export async function executeCommand(input) {
   console.log('[EXEC] Executing command:', input);
   commandHistory.push(input);
 
-  // Check if the input contains operators
   if (hasOperators(input)) {
     console.log('[OPERATORS] Detected operators in command, using operators system');
     try {
@@ -173,7 +180,6 @@ export async function executeCommand(input) {
     }
   }
 
-  // Normal single command execution
   const [command, ...args] = input.split(' ');
 
   const terminal = document.getElementById('terminal');
@@ -188,7 +194,6 @@ export async function executeCommand(input) {
 
   if (commands[command]) {
     try {
-      // Check file access permissions if targeting a specific file
       if (target && target.superuser) {
         const accessCheck = checkAccess(target);
         if (!accessCheck.hasAccess) {
