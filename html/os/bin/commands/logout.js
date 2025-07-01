@@ -14,4 +14,4 @@ export default async function logout() {
   }
 }
 
-logout.help = "Logout from current session. If root, switches back to simulaCLI user. If simulaCLI user, exits the system.";
+logout.help = "Logout from current session or user.";
