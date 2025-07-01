@@ -9,7 +9,13 @@ export default async function play(fileName) {
       return `play: ${fileName}: ${accessCheck.message}`;
     }
 
-    const url = file.goto ? file.goto : `os/downloads/${fileName}`;
+    let url;
+    if (file.goto && file.goto !== "") {
+      url = file.goto;
+    } else {
+      url = `os/downloads/${fileName}`;
+    }
+
     window.open(url, '_blank');
     return `Playing ${fileName}...`;
   } else {
@@ -17,4 +23,4 @@ export default async function play(fileName) {
   }
 }
 
-play.help = "Plays an audio/video file.";
+play.help = "Plays an audio/video file in a new tab.";

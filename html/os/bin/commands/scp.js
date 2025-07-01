@@ -10,11 +10,13 @@ export default async function scp(fileName) {
       return `scp: ${fileName}: ${accessCheck.message}`;
     }
 
-    const url = file.goto && file.goto !== "" ? file.goto : `os/downloads/${fileName}`;
+    let url;
     if (file.goto && file.goto !== "") {
+      url = file.goto;
       window.open(url, '_blank');
       return `Accessing ${fileName}...`;
     } else {
+      url = `os/downloads/${fileName}`;
       downloadFile(fileName);
       return `Downloading ${fileName}...`;
     }

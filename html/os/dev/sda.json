@@ -4,12 +4,24 @@
     "owner": "root",
     "permissions": "rwx",
     "children": {
-      "img": {
+      "bin": {
+        "type": "directory",
+        "owner": "root",
+        "permissions": "rwx",
+        "children": {}
+      },
+      "dev": {
+        "type": "directory",
+        "owner": "root",
+        "permissions": "rwx",
+        "children": {}
+      },
+      "etc": {
         "type": "directory",
         "owner": "root",
         "permissions": "rwx",
         "children": {
-          "image1.jpg": {
+          "motd": {
             "type": "file",
             "owner": "root",
             "permissions": "rw-",
@@ -17,124 +29,74 @@
             "viewable": true,
             "playable": false,
             "content": "",
-            "goto": "",
-            "size": "512000"
-          },
-          "image2.jpg": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": true,
-            "playable": false,
-            "content": "",
-            "goto": "",
-            "size": "466944"
-          },
-          "image3.jpg": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": true,
-            "playable": false,
-            "content": "",
-            "goto": "",
-            "size": "520192"
+            "goto": "os/etc/motd",
+            "size": "1024"
           }
         }
       },
-      "music": {
+      "home": {
         "type": "directory",
         "owner": "root",
         "permissions": "rwx",
         "children": {
-          "track1.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "",
-            "size": "643072"
-          },
-          "track2.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "",
-            "size": "548864"
-          },
-          "track3.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "",
-            "size": "643072"
-          },
-          "track4.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "",
-            "size": "643072"
+          "simulaclient": {
+            "type": "directory",
+            "owner": "simulaclient",
+            "permissions": "rwx",
+            "children": {}
           }
         }
       },
-      "dontlook": {
+      "sfx": {
         "type": "directory",
         "owner": "root",
         "permissions": "rwx",
         "children": {
-          "dontwatch.mp4": {
+          "return.mp3": {
             "type": "file",
             "owner": "root",
             "permissions": "rw-",
-            "downloadable": false,
+            "downloadable": true,
             "viewable": false,
             "playable": true,
             "content": "",
-            "goto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            "size": "49"
+            "goto": "os/sfx/return.mp3",
+            "size": "48000"
+          },
+          "shutdown.mp3": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": false,
+            "playable": true,
+            "content": "",
+            "goto": "os/sfx/shutdown.mp3",
+            "size": "52000"
+          },
+          "terminal.mp3": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": false,
+            "playable": true,
+            "content": "",
+            "goto": "os/sfx/terminal.mp3",
+            "size": "45000"
+          },
+          "terminal1.mp3": {
+            "type": "file",
+            "owner": "root",
+            "permissions": "rw-",
+            "downloadable": true,
+            "viewable": false,
+            "playable": true,
+            "content": "",
+            "goto": "os/sfx/terminal1.mp3",
+            "size": "42000"
           }
         }
-      },
-      "readme.txt": {
-        "type": "file",
-        "owner": "root",
-        "permissions": "rwx",
-        "downloadable": true,
-        "viewable": true,
-        "playable": false,
-        "content": "SimulaCLI - https://github.com/thomasloupe/simulacli<br>Learn more about this project, and all of my work at https://thomasloupe.com!",
-        "goto": "",
-        "size": "135"
-      },
-      "dontreadme.txt": {
-        "type": "file",
-        "owner": "root",
-        "permissions": "rwx",
-        "downloadable": false,
-        "viewable": true,
-        "playable": false,
-        "content": "",
-        "goto": "https://www.juhsd.net/cms/lib/CA01902464/Centricity/Domain/256/2016_The%20Veldt.pdf",
-        "size": "88",
-        "superuser": "true"
       }
     }
   }

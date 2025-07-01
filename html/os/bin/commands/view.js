@@ -9,7 +9,13 @@ export default async function view(fileName) {
       return `view: ${fileName}: ${accessCheck.message}`;
     }
 
-    const url = file.goto && file.goto !== "" ? file.goto : `os/downloads/${fileName}`;
+    let url;
+    if (file.goto && file.goto !== "") {
+      url = file.goto;
+    } else {
+      url = `os/downloads/${fileName}`;
+    }
+
     window.open(url, '_blank');
     return `Viewing ${fileName}...`;
   } else {
