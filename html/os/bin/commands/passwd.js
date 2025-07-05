@@ -1,3 +1,4 @@
+// passwd.js - Change user password
 import { changePassword, getCurrentUser, isCurrentlyRoot } from '../../superuser.js';
 
 export default async function passwd(...args) {
@@ -11,7 +12,7 @@ export default async function passwd(...args) {
     return 'passwd: Permission denied. Use "sudo passwd" to change root password.';
   }
 
-  if (getCurrentUser() === 'simulaCLI' && targetUser === 'simulaCLI') {
+  if (getCurrentUser() === 'simulaclient' && targetUser === 'simulaclient') {
     return 'passwd: Regular user password changes not supported. Use "sudo passwd" for root password.';
   }
 
@@ -53,13 +54,16 @@ async function handleRootPasswordChange() {
 
 function setupPasswdHandler() {
   if (window.passwdHandler) {
-    document.removeEventListener('keydown', window.passwdHandler);
+    document.removeEventListener('keydown', window.passwdHandler, true);
   }
 
   window.passwdHandler = async function(event) {
     if (!window.passwdState || !window.passwdState.active) {
       return;
     }
+
+    event.stopPropagation();
+    event.stopImmediatePropagation();
 
     const commandInput = document.getElementById('commandInput');
     const terminal = document.getElementById('terminal');
@@ -166,7 +170,7 @@ function setupPasswdHandler() {
     }
   };
 
-  document.addEventListener('keydown', window.passwdHandler);
+  document.addEventListener('keydown', window.passwdHandler, true);
 }
 
 function restoreNormalInput() {
@@ -182,7 +186,7 @@ function restoreNormalInput() {
 function cleanup() {
   window.passwdState = null;
   if (window.passwdHandler) {
-    document.removeEventListener('keydown', window.passwdHandler);
+    document.removeEventListener('keydown', window.passwdHandler, true);
     window.passwdHandler = null;
   }
 }
