@@ -43,13 +43,16 @@ export default async function sudo(...args) {
 
 function setupSudoPasswordHandler() {
   if (window.sudoPasswordHandler) {
-    document.removeEventListener('keydown', window.sudoPasswordHandler);
+    document.removeEventListener('keydown', window.sudoPasswordHandler, true);
   }
 
   window.sudoPasswordHandler = async function(event) {
     if (!window.sudoPasswordPrompt || !window.sudoPasswordPrompt.active) {
       return;
     }
+
+    event.stopPropagation();
+    event.stopImmediatePropagation();
 
     const commandInput = document.getElementById('commandInput');
 
@@ -68,7 +71,7 @@ function setupSudoPasswordHandler() {
 
       window.sudoPasswordPrompt.active = false;
       window.sudoPasswordPrompt.resolve('sudo: Operation cancelled');
-      document.removeEventListener('keydown', window.sudoPasswordHandler);
+      document.removeEventListener('keydown', window.sudoPasswordHandler, true);
       window.sudoPasswordHandler = null;
 
       return;
@@ -110,7 +113,6 @@ function setupSudoPasswordHandler() {
             } else {
               terminal.innerHTML += `<div>[sudo] password for ${getCurrentUser()}: </div>`;
               commandInput.placeholder = '[sudo] password for ' + getCurrentUser() + ': ';
-              // Keep password input mode for retry
             }
           } else {
             terminal.innerHTML += `<div>sudo: ${result.message}</div>`;
@@ -129,7 +131,7 @@ function setupSudoPasswordHandler() {
             window.sudoPasswordPrompt.attempts >= window.sudoPasswordPrompt.maxAttempts ||
             !result.message.includes('password')) {
           window.sudoPasswordPrompt.active = false;
-          document.removeEventListener('keydown', window.sudoPasswordHandler);
+          document.removeEventListener('keydown', window.sudoPasswordHandler, true);
           window.sudoPasswordHandler = null;
         }
 
@@ -144,13 +146,13 @@ function setupSudoPasswordHandler() {
         window.sudoPasswordPrompt.resolve(`sudo: Error - ${error.message}`);
 
         window.sudoPasswordPrompt.active = false;
-        document.removeEventListener('keydown', window.sudoPasswordHandler);
+        document.removeEventListener('keydown', window.sudoPasswordHandler, true);
         window.sudoPasswordHandler = null;
       }
     }
   };
 
-  document.addEventListener('keydown', window.sudoPasswordHandler);
+  document.addEventListener('keydown', window.sudoPasswordHandler, true);
 }
 
 sudo.help = "Execute commands as another user. Usage: sudo [command] [arguments...]";

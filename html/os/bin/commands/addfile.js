@@ -36,13 +36,17 @@ export default async function addfile(...args) {
 
 function setupAddfileHandler() {
   if (window.addfileHandler) {
-    document.removeEventListener('keydown', window.addfileHandler);
+    document.removeEventListener('keydown', window.addfileHandler, true);
   }
 
   window.addfileHandler = async function(event) {
     if (!window.addfileState || !window.addfileState.active) {
       return;
     }
+
+    // Stop all other handlers from processing this event
+    event.stopPropagation();
+    event.stopImmediatePropagation();
 
     const commandInput = document.getElementById('commandInput');
     const terminal = document.getElementById('terminal');
@@ -71,7 +75,7 @@ function setupAddfileHandler() {
     }
   };
 
-  document.addEventListener('keydown', window.addfileHandler);
+  document.addEventListener('keydown', window.addfileHandler, true);
 }
 
 async function processStep(input) {
@@ -326,7 +330,7 @@ function cleanup() {
 
   window.addfileState = null;
   if (window.addfileHandler) {
-    document.removeEventListener('keydown', window.addfileHandler);
+    document.removeEventListener('keydown', window.addfileHandler, true);
     window.addfileHandler = null;
   }
 }

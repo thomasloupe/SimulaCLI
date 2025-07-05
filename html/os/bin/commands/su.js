@@ -5,7 +5,6 @@ export default async function su(...args) {
   const isLoginShell = args.length >= 2 && args[1] === '-' || args[0] === '-';
 
   if (args.length === 0) {
-    // Plain "su" defaults to root
     return await handleSuToRoot();
   }
 
@@ -68,13 +67,16 @@ async function handleSuToRoot() {
 
 function setupPasswordHandler() {
   if (window.suPasswordHandler) {
-    document.removeEventListener('keydown', window.suPasswordHandler);
+    document.removeEventListener('keydown', window.suPasswordHandler, true);
   }
 
   window.suPasswordHandler = async function(event) {
     if (!window.suPasswordPrompt || !window.suPasswordPrompt.active) {
       return;
     }
+
+    event.stopPropagation();
+    event.stopImmediatePropagation();
 
     const commandInput = document.getElementById('commandInput');
 
@@ -93,7 +95,7 @@ function setupPasswordHandler() {
 
       window.suPasswordPrompt.active = false;
       window.suPasswordPrompt.resolve('su: Authentication cancelled');
-      document.removeEventListener('keydown', window.suPasswordHandler);
+      document.removeEventListener('keydown', window.suPasswordHandler, true);
       window.suPasswordHandler = null;
 
       return;
@@ -141,7 +143,7 @@ function setupPasswordHandler() {
 
         if (result.success || window.suPasswordPrompt.attempts >= window.suPasswordPrompt.maxAttempts) {
           window.suPasswordPrompt.active = false;
-          document.removeEventListener('keydown', window.suPasswordHandler);
+          document.removeEventListener('keydown', window.suPasswordHandler, true);
           window.suPasswordHandler = null;
         }
 
@@ -156,13 +158,13 @@ function setupPasswordHandler() {
         window.suPasswordPrompt.resolve(`su: Error - ${error.message}`);
 
         window.suPasswordPrompt.active = false;
-        document.removeEventListener('keydown', window.suPasswordHandler);
+        document.removeEventListener('keydown', window.suPasswordHandler, true);
         window.suPasswordHandler = null;
       }
     }
   };
 
-  document.addEventListener('keydown', window.suPasswordHandler);
+  document.addEventListener('keydown', window.suPasswordHandler, true);
 }
 
 su.help = "Switch user. Usage: su [user] or su - [user]";
