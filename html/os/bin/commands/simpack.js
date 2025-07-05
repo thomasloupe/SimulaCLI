@@ -1,6 +1,7 @@
-import { isAuthenticatedAsRoot } from '../../superuser.js';
+// simpack.js - SimulaCLI Package Manager
 import { getRepositories } from '../../repositories.js';
 
+// Initialize package storage
 function initializePackageStorage() {
   if (!window.installedPackages) {
     try {
@@ -21,13 +22,10 @@ function savePackages() {
   }
 }
 
-function getCommands() {
-  return window.debugCommands || {};
-}
-
-initializePackageStorage();
-
+// Main simpack function
 export default async function simpack(...args) {
+  initializePackageStorage();
+
   const subcommand = args[0];
   const packageName = args[1];
 
@@ -39,274 +37,19 @@ export default async function simpack(...args) {
       return listInstalledPackages();
     case 'remove':
       return removePackage(packageName);
+    case 'search':
+      return await searchPackages(packageName);
     case 'update':
       return await updatePackageLists();
-    case 'upgrade':
-      return await upgradePackages(...args.slice(1));
-    case 'search':
-      return searchPackages(packageName);
     case 'repo':
       return manageRepositories(args.slice(1));
     case 'debug':
       return debugPackages();
-    case 'test':
-      return testPackage(packageName);
     case 'reload':
       return reloadPackages();
     default:
-      return `simpack: invalid operation '${subcommand}'<br>Usage: simpack [get|install|list|remove|update|upgrade|search|repo|debug|test|reload] [package-name] [-y]`;
+      return `simpack: invalid operation '${subcommand}'<br>Usage: simpack [get|list|remove|search|update|repo|debug|reload] [package-name]`;
   }
-}
-
-async function updatePackageLists() {
-  let output = 'Reading package lists...<br>';
-
-  const repositories = getRepositories();
-  let totalPackages = 0;
-  let repoCount = 0;
-  let failedRepos = [];
-  let availableUpdates = [];
-
-  for (const repo of repositories) {
-    try {
-      output += `Hit:${repoCount + 1} ${repo.url} packages<br>`;
-
-      const listUrl = `${repo.url}packages.json`;
-      const response = await fetch(listUrl);
-
-      if (response.ok) {
-        const packageList = await response.json();
-        totalPackages += packageList.length;
-        repoCount++;
-
-        for (const availablePackage of packageList) {
-          const installedPackage = window.installedPackages[availablePackage.name];
-          if (installedPackage) {
-            if (availablePackage.version && installedPackage.version !== availablePackage.version) {
-              availableUpdates.push({
-                name: availablePackage.name,
-                currentVersion: installedPackage.version || 'unknown',
-                newVersion: availablePackage.version,
-                repository: repo.name
-              });
-            } else if (!installedPackage.version) {
-              availableUpdates.push({
-                name: availablePackage.name,
-                currentVersion: 'unknown',
-                newVersion: availablePackage.version || 'latest',
-                repository: repo.name,
-                note: 'version check recommended'
-              });
-            }
-          }
-        }
-      } else {
-        throw new Error(`HTTP ${response.status}`);
-      }
-    } catch (error) {
-      failedRepos.push({ name: repo.name, error: error.message });
-      output += `Err:${repoCount + 1} ${repo.url} ${error.message}<br>`;
-    }
-  }
-
-  output += '<br>';
-
-  if (repoCount > 0) {
-    output += `Fetched package information from ${repoCount} repositories.<br>`;
-    output += `Found ${totalPackages} available packages.<br>`;
-  }
-
-  if (failedRepos.length > 0) {
-    output += `<span style="color: #f80;">Warning: Failed to reach ${failedRepos.length} repositories.</span><br>`;
-  }
-
-  if (availableUpdates.length > 0) {
-    output += '<br><strong>The following packages have updates available:</strong><br>';
-    availableUpdates.forEach(pkg => {
-      const note = pkg.note ? ` (${pkg.note})` : '';
-      output += `  ${pkg.name}: ${pkg.currentVersion} → ${pkg.newVersion} [${pkg.repository}]${note}<br>`;
-    });
-    output += '<br>';
-    output += `<strong>${availableUpdates.length} package(s) can be upgraded.</strong><br>`;
-    output += 'Run <strong>simpack upgrade</strong> to upgrade all packages.<br>';
-    output += 'Run <strong>simpack upgrade [package-name]</strong> to upgrade a specific package.<br>';
-  } else {
-    const installedCount = Object.keys(window.installedPackages).length;
-    if (installedCount > 0) {
-      output += '<br><strong>All installed packages are up to date.</strong><br>';
-    } else {
-      output += '<br><em>No packages currently installed.</em><br>';
-    }
-  }
-
-  window.availableUpdates = availableUpdates;
-
-  output += '<br>Reading package lists... Done';
-  return output;
-}
-
-async function upgradePackages(specificPackage, ...flags) {
-  if (!window.availableUpdates) {
-    return 'E: No update information available. Run <strong>simpack update</strong> first.';
-  }
-
-  const updates = window.availableUpdates;
-
-  if (updates.length === 0) {
-    return 'No packages need to be upgraded.';
-  }
-
-  const allArgs = [specificPackage, ...flags].filter(Boolean);
-  const hasYesFlag = allArgs.includes('-y') || allArgs.includes('--yes');
-  const packageArgs = allArgs.filter(arg => !arg.startsWith('-'));
-  const targetPackage = packageArgs.length > 0 ? packageArgs[0] : null;
-
-  let packagesToUpgrade = updates;
-
-  if (targetPackage) {
-    packagesToUpgrade = updates.filter(pkg => pkg.name === targetPackage);
-    if (packagesToUpgrade.length === 0) {
-      return `E: Package '${targetPackage}' has no available updates or is not installed.`;
-    }
-  }
-
-  let output = 'Reading package lists... Done<br>';
-  output += 'Building dependency tree... Done<br>';
-  output += 'Reading state information... Done<br>';
-  output += 'Calculating upgrade... Done<br><br>';
-
-  output += 'The following packages will be upgraded:<br>';
-  packagesToUpgrade.forEach(pkg => {
-    output += `  ${pkg.name} (${pkg.currentVersion} → ${pkg.newVersion})<br>`;
-  });
-
-  output += `<br>${packagesToUpgrade.length} upgraded, 0 newly installed, 0 to remove and ${updates.length - packagesToUpgrade.length} not upgraded.<br>`;
-
-  const downloadSize = packagesToUpgrade.reduce((total, pkg) => total + Math.floor(Math.random() * 50 + 10), 0);
-  output += `Need to get ${downloadSize} kB of archives.<br>`;
-  output += `After this operation, ${Math.floor(downloadSize * 0.3)} kB of additional disk space will be used.<br><br>`;
-
-  if (!hasYesFlag) {
-    output += '<strong>Do you want to continue? [Y/n]</strong><br>';
-    output += '<em>Use "simpack upgrade -y" to skip this prompt in the future.</em><br><br>';
-
-    window.simpackUpgradeState = {
-      packagesToUpgrade: packagesToUpgrade,
-      pendingOutput: output,
-      waitingForConfirmation: true
-    };
-
-    setupUpgradeConfirmationHandler();
-
-    return output + '<em>Waiting for confirmation...</em>';
-  }
-
-  return await performUpgrade(packagesToUpgrade, output);
-}
-
-function setupUpgradeConfirmationHandler() {
-  if (window.upgradeConfirmationHandler) {
-    document.removeEventListener('keydown', window.upgradeConfirmationHandler);
-  }
-
-  window.upgradeConfirmationHandler = async function(event) {
-    if (!window.simpackUpgradeState || !window.simpackUpgradeState.waitingForConfirmation) {
-      return;
-    }
-
-    const key = event.key.toLowerCase();
-
-    if (event.ctrlKey && key === 'c') {
-      event.preventDefault();
-
-      const terminal = document.getElementById('terminal');
-      terminal.innerHTML += '<div>^C</div>';
-      terminal.innerHTML += '<div>Interrupt: upgrade cancelled by user.</div>';
-      terminal.scrollTop = terminal.scrollHeight;
-
-      window.simpackUpgradeState = null;
-      document.removeEventListener('keydown', window.upgradeConfirmationHandler);
-      window.upgradeConfirmationHandler = null;
-
-      const commandInput = document.getElementById('commandInput');
-      if (commandInput) {
-        commandInput.focus();
-      }
-
-      return;
-    }
-
-    if (key === 'y' || key === 'enter') {
-      event.preventDefault();
-
-      const terminal = document.getElementById('terminal');
-      terminal.innerHTML += '<div><strong>Y</strong></div>';
-      terminal.innerHTML += '<div>Proceeding with upgrade...</div>';
-
-      const result = await performUpgrade(
-        window.simpackUpgradeState.packagesToUpgrade,
-        window.simpackUpgradeState.pendingOutput
-      );
-
-      terminal.innerHTML += `<div>${result}</div>`;
-      terminal.scrollTop = terminal.scrollHeight;
-
-      window.simpackUpgradeState = null;
-      document.removeEventListener('keydown', window.upgradeConfirmationHandler);
-      window.upgradeConfirmationHandler = null;
-
-      const commandInput = document.getElementById('commandInput');
-      if (commandInput) {
-        commandInput.focus();
-      }
-
-    } else if (key === 'n') {
-      event.preventDefault();
-
-      const terminal = document.getElementById('terminal');
-      terminal.innerHTML += '<div><strong>N</strong></div>';
-      terminal.innerHTML += '<div>Abort.</div>';
-      terminal.scrollTop = terminal.scrollHeight;
-
-      window.simpackUpgradeState = null;
-      document.removeEventListener('keydown', window.upgradeConfirmationHandler);
-      window.upgradeConfirmationHandler = null;
-
-      const commandInput = document.getElementById('commandInput');
-      if (commandInput) {
-        commandInput.focus();
-      }
-    }
-  };
-
-  document.addEventListener('keydown', window.upgradeConfirmationHandler);
-}
-
-async function performUpgrade(packagesToUpgrade, initialOutput) {
-  let output = '';
-
-  for (const pkg of packagesToUpgrade) {
-    try {
-      output += `<br>Get:1 simulacli-repo ${pkg.name} ${pkg.newVersion} [${Math.floor(Math.random() * 50 + 10)} kB]<br>`;
-
-      const installResult = await installPackageInternal(pkg.name, true);
-      if (installResult.success) {
-        output += `Setting up ${pkg.name} (${pkg.newVersion})...<br>`;
-        output += `Processing triggers for ${pkg.name}...<br>`;
-      } else {
-        output += `<span style="color: #f00;">E: Failed to upgrade ${pkg.name}: ${installResult.error}</span><br>`;
-      }
-    } catch (error) {
-      output += `<span style="color: #f00;">E: Error upgrading ${pkg.name}: ${error.message}</span><br>`;
-    }
-  }
-
-  output += '<br><strong>Package upgrades completed successfully.</strong><br>';
-  output += '<em>Run "simpack reload" or "reboot" to activate updated packages.</em>';
-
-  delete window.availableUpdates;
-
-  return output;
 }
 
 async function installPackage(packageName) {
@@ -314,54 +57,29 @@ async function installPackage(packageName) {
     return 'E: Missing package name. Usage: simpack get [package-name]';
   }
 
-  const result = await installPackageInternal(packageName, false);
-  if (result.success) {
-    return result.output;
-  } else {
-    return result.error;
-  }
-}
-
-async function installPackageInternal(packageName, isUpgrade = false) {
   try {
-    let output = '';
-
-    if (!isUpgrade) {
-      const terminal = document.getElementById('terminal');
-      terminal.innerHTML += `<div>Reading package lists... Done</div>`;
-      terminal.innerHTML += `<div>Building dependency tree... Done</div>`;
-      terminal.innerHTML += `<div>Reading state information... Done</div>`;
-      terminal.innerHTML += `<div>The following NEW packages will be installed:</div>`;
-      terminal.innerHTML += `<div>  ${packageName}</div>`;
-      terminal.innerHTML += `<div>0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.</div>`;
-      terminal.innerHTML += `<div>Need to get 0 B of archives.</div>`;
-      terminal.innerHTML += `<div>After this operation, 0 B of additional disk space will be used.</div>`;
-      terminal.innerHTML += `<div>Get:1 simulacli-repo ${packageName} [0 B]</div>`;
-    }
-
     const repositories = getRepositories();
     let packageCode = null;
     let foundInRepo = null;
     let packageInfo = null;
 
+    // Try to fetch from each repository
     for (const repo of repositories) {
       try {
+        // First get package info
         const listUrl = `${repo.url}packages.json`;
         const listResponse = await fetch(listUrl);
-
         if (listResponse.ok) {
           const packageList = await listResponse.json();
           packageInfo = packageList.find(pkg => pkg.name === packageName);
         }
 
+        // Then get package code
         const packageUrl = `${repo.url}${packageName}.js`;
-        console.log(`Trying to fetch: ${packageUrl}`);
         const response = await fetch(packageUrl);
-
         if (response.ok) {
           packageCode = await response.text();
           foundInRepo = repo.name;
-          console.log(`Package found in ${repo.name}: ${packageCode.length} bytes`);
           break;
         }
       } catch (error) {
@@ -371,19 +89,10 @@ async function installPackageInternal(packageName, isUpgrade = false) {
     }
 
     if (!packageCode) {
-      return {
-        success: false,
-        error: `E: Unable to locate package ${packageName}<br>Package '${packageName}' has no installation candidate<br>Searched repositories: ${repositories.map(r => r.name).join(', ')}`
-      };
+      return `E: Unable to locate package ${packageName}<br>Searched repositories: ${repositories.map(r => r.name).join(', ')}`;
     }
 
-    if (!validatePackageCode(packageCode, packageName)) {
-      return {
-        success: false,
-        error: `E: Package ${packageName} is malformed or missing required exports`
-      };
-    }
-
+    // Store the package
     window.installedPackages[packageName] = {
       code: packageCode,
       installedAt: new Date().toISOString(),
@@ -393,36 +102,11 @@ async function installPackageInternal(packageName, isUpgrade = false) {
 
     savePackages();
 
-    if (!isUpgrade) {
-      const terminal = document.getElementById('terminal');
-      terminal.innerHTML += `<div>Fetched ${packageCode.length} B in 0s (${Math.floor(packageCode.length/1024)} kB/s)</div>`;
-      terminal.innerHTML += `<div>Selecting previously unselected package ${packageName}.</div>`;
-      terminal.innerHTML += `<div>(Reading database ... 100% complete)</div>`;
-      terminal.innerHTML += `<div>Unpacking ${packageName} from ${foundInRepo} repository...</div>`;
-      terminal.innerHTML += `<div>Setting up ${packageName} ...</div>`;
-      terminal.innerHTML += `<div>Processing triggers for man-db ...</div>`;
-      terminal.innerHTML += `<div><br><strong>Package '${packageName}' installed successfully!</strong></div>`;
-      terminal.innerHTML += `<div><strong>A system reboot is required to load the new command.</strong></div>`;
-      terminal.innerHTML += `<div>Run 'reboot' to restart the system and activate '${packageName}'.</div>`;
-      terminal.innerHTML += `<div><em>Alternative: Try 'simpack reload' to load without rebooting.</em></div>`;
-
-      return { success: true, output: '' };
-    } else {
-      return { success: true, output: `Package ${packageName} upgraded successfully` };
-    }
+    return `Package '${packageName}' installed successfully!<br>Run 'reboot' or 'simpack reload' to activate the command.`;
 
   } catch (error) {
-    return {
-      success: false,
-      error: `E: Failed to install package ${packageName}<br>Error: ${error.message}`
-    };
+    return `E: Failed to install package ${packageName}<br>Error: ${error.message}`;
   }
-}
-
-function validatePackageCode(code, packageName) {
-  const hasDefaultExport = code.includes('export default') && code.includes(`function ${packageName}`);
-  const hasHelpProperty = code.includes('.help =');
-  return hasDefaultExport && hasHelpProperty;
 }
 
 function listInstalledPackages() {
@@ -431,15 +115,15 @@ function listInstalledPackages() {
     return 'No packages installed via simpack.';
   }
 
-  const commands = getCommands();
   let output = 'Installed packages:<br>';
   packages.forEach(pkg => {
     const installInfo = window.installedPackages[pkg];
-    const inCommands = commands[pkg] ? '[OK]' : '[FAIL]';
     const version = installInfo.version ? ` v${installInfo.version}` : '';
-    output += `${pkg}${version} ${inCommands} (installed: ${new Date(installInfo.installedAt).toLocaleString()}, repo: ${installInfo.repository || 'unknown'})<br>`;
+    const commands = window.debugCommands || {};
+    const status = commands[pkg] ? '[LOADED]' : '[NOT LOADED]';
+    output += `${pkg}${version} ${status} (installed: ${new Date(installInfo.installedAt).toLocaleString()})<br>`;
   });
-  output += '<br>[OK] = Loaded in commands, [FAIL] = Not loaded';
+
   return output;
 }
 
@@ -449,17 +133,18 @@ function removePackage(packageName) {
   }
 
   if (!window.installedPackages[packageName]) {
-    return `E: Package '${packageName}' is not installed, so not removed`;
+    return `E: Package '${packageName}' is not installed`;
   }
 
   delete window.installedPackages[packageName];
-  const commands = getCommands();
-  if (commands[packageName]) {
-    delete commands[packageName];
-  }
-  savePackages();
 
-  return `Removing ${packageName}...<br>Package '${packageName}' removed successfully!<br><strong>Changes will take effect immediately.</strong>`;
+  // Try to remove from commands if available
+  if (window.debugCommands && window.debugCommands[packageName]) {
+    delete window.debugCommands[packageName];
+  }
+
+  savePackages();
+  return `Package '${packageName}' removed successfully!`;
 }
 
 async function searchPackages(searchTerm) {
@@ -474,7 +159,6 @@ async function searchPackages(searchTerm) {
     try {
       const listUrl = `${repo.url}packages.json`;
       const response = await fetch(listUrl);
-
       if (response.ok) {
         const packageList = await response.json();
         const matches = packageList.filter(pkg =>
@@ -498,6 +182,32 @@ async function searchPackages(searchTerm) {
     const installed = window.installedPackages[pkg.name] ? ' [INSTALLED]' : '';
     output += `${pkg.name}${version} - ${pkg.description} (${pkg.repository})${installed}<br>`;
   });
+
+  return output;
+}
+
+async function updatePackageLists() {
+  const repositories = getRepositories();
+  let output = 'Updating package lists...<br>';
+  let totalPackages = 0;
+
+  for (const repo of repositories) {
+    try {
+      const listUrl = `${repo.url}packages.json`;
+      const response = await fetch(listUrl);
+      if (response.ok) {
+        const packageList = await response.json();
+        totalPackages += packageList.length;
+        output += `Hit ${repo.name} (${packageList.length} packages)<br>`;
+      } else {
+        output += `Failed to reach ${repo.name}<br>`;
+      }
+    } catch (error) {
+      output += `Error fetching from ${repo.name}: ${error.message}<br>`;
+    }
+  }
+
+  output += `<br>Found ${totalPackages} available packages.`;
   return output;
 }
 
@@ -519,109 +229,63 @@ function manageRepositories(args) {
 
 function debugPackages() {
   const packages = window.installedPackages;
-  const commands = getCommands();
-  let output = '[DEBUG] Debug information:<br>';
-  output += `[INFO] Packages in memory: ${Object.keys(packages).length}<br>`;
+  const commands = window.debugCommands || {};
 
-  try {
-    const stored = localStorage.getItem('simulacli_packages');
-    const storedPackages = stored ? JSON.parse(stored) : {};
-    output += `[INFO] Packages in localStorage: ${Object.keys(storedPackages).length}<br>`;
-  } catch (error) {
-    output += `[ERROR] localStorage error: ${error.message}<br>`;
+  let output = '[DEBUG] Package debug information:<br>';
+  output += `Packages in storage: ${Object.keys(packages).length}<br>`;
+  output += `Commands loaded: ${Object.keys(commands).length}<br><br>`;
+
+  if (Object.keys(packages).length > 0) {
+    output += 'Package details:<br>';
+    Object.keys(packages).forEach(pkg => {
+      const info = packages[pkg];
+      const loaded = commands[pkg] ? 'LOADED' : 'NOT LOADED';
+      output += `${pkg}: ${loaded}, ${info.code ? info.code.length + ' bytes' : 'no code'}<br>`;
+    });
   }
-
-  output += `[INFO] Commands loaded: ${Object.keys(commands).length}<br>`;
-  output += `[INFO] Commands list: ${Object.keys(commands).sort().join(', ')}<br>`;
-  output += `[INFO] Available updates: ${window.availableUpdates ? window.availableUpdates.length : 'not checked'}<br><br>`;
-
-  Object.keys(packages).forEach(pkg => {
-    const inCommands = commands[pkg] ? '[OK] Loaded' : '[FAIL] Not loaded';
-    const version = packages[pkg].version ? ` v${packages[pkg].version}` : '';
-    output += `${pkg}${version}: ${packages[pkg].code ? 'has code' : 'missing code'} | ${inCommands}<br>`;
-  });
 
   return output;
 }
 
-function testPackage(packageName) {
-  if (!packageName) {
-    return 'E: Missing package name. Usage: simpack test [package-name]';
-  }
-
-  const packageInfo = window.installedPackages[packageName];
-  if (!packageInfo) {
-    return `E: Package '${packageName}' is not installed`;
-  }
-
-  let output = `[TEST] Testing package: ${packageName}<br>`;
-  output += `[INFO] Code length: ${packageInfo.code.length} bytes<br>`;
-  output += `[INFO] Version: ${packageInfo.version || 'unknown'}<br>`;
-  output += `[INFO] Installed: ${new Date(packageInfo.installedAt).toLocaleString()}<br>`;
-  output += `[INFO] Repository: ${packageInfo.repository}<br><br>`;
-
-  try {
-    output += `[CODE] Code preview:<br><pre style="font-size: 12px; background: #333; padding: 10px; margin: 5px 0;">${packageInfo.code.substring(0, 300)}${packageInfo.code.length > 300 ? '...' : ''}</pre>`;
-
-    const isValid = validatePackageCode(packageInfo.code, packageName);
-    output += `[VALIDATION] Status: ${isValid ? 'PASSED' : 'FAILED'}<br>`;
-
-    return output;
-  } catch (error) {
-    return output + `[ERROR] Test failed: ${error.message}`;
-  }
-}
-
-function transformES6ModuleForEval(code, packageName) {
-  let transformedCode = code;
-
-  transformedCode = transformedCode.replace(
-    /export\s+default\s+async\s+function\s+(\w+)/,
-    'async function $1'
-  );
-
-  transformedCode += `\n\nwindow.tempPackage = ${packageName};\nwindow.tempPackageHelp = ${packageName}.help;`;
-
-  return transformedCode;
-}
-
 async function reloadPackages() {
-  let output = '[RELOAD] Reloading packages...<br>';
-
-  const packagesToLoad = Object.keys(window.installedPackages);
-  if (packagesToLoad.length === 0) {
-    return output + 'No packages to reload.';
+  const packages = Object.keys(window.installedPackages);
+  if (packages.length === 0) {
+    return 'No packages to reload.';
   }
 
-  const commands = getCommands();
+  let output = 'Reloading packages...<br>';
+  const commands = window.debugCommands || {};
 
-  for (const packageName of packagesToLoad) {
+  for (const packageName of packages) {
     try {
       const packageInfo = window.installedPackages[packageName];
 
-      const transformedCode = transformES6ModuleForEval(packageInfo.code, packageName);
-
-      console.log(`[RELOAD] Attempting to load ${packageName} with transformed code`);
+      // Transform ES6 module for eval
+      let transformedCode = packageInfo.code;
+      transformedCode = transformedCode.replace(
+        /export\s+default\s+async\s+function\s+(\w+)/,
+        'async function $1'
+      );
+      transformedCode += `\n\nwindow.tempPackage = ${packageName};\nwindow.tempPackageHelp = ${packageName}.help;`;
 
       eval(transformedCode);
 
       if (window.tempPackage && typeof window.tempPackage === 'function') {
         commands[packageName] = window.tempPackage;
         commands[packageName].help = window.tempPackageHelp || 'No description available.';
-        output += `[OK] Reloaded: ${packageName}<br>`;
+        output += `[OK] ${packageName}<br>`;
 
         delete window.tempPackage;
         delete window.tempPackageHelp;
       } else {
-        output += `[FAIL] Failed to reload: ${packageName} (function not found after transformation)<br>`;
+        output += `[FAIL] ${packageName}<br>`;
       }
     } catch (error) {
-      console.error(`[ERROR] Failed to reload ${packageName}:`, error);
-      output += `[FAIL] Failed to reload: ${packageName} (${error.message})<br>`;
+      output += `[ERROR] ${packageName}: ${error.message}<br>`;
     }
   }
 
-  return output + '<br>Package reload complete. Try your commands now!';
+  return output + '<br>Reload complete!';
 }
 
-simpack.help = "SimulaCLI Package Manager. Usage: simpack [get|install|list|remove|update|upgrade|search|repo|debug|test|reload] [package-name] [-y]";
+simpack.help = "SimulaCLI Package Manager. Usage: simpack [get|list|remove|search|update|repo|debug|reload] [package-name]";
