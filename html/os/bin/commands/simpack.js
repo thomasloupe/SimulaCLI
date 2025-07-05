@@ -1,6 +1,5 @@
 import { isAuthenticatedAsRoot } from '../../superuser.js';
 import { getRepositories } from '../../repositories.js';
-import { commands } from '../../commands.js';
 
 function initializePackageStorage() {
   if (!window.installedPackages) {
@@ -20,6 +19,10 @@ function savePackages() {
   } catch (error) {
     console.log('Could not save to localStorage:', error.message);
   }
+}
+
+function getCommands() {
+  return window.debugCommands || {};
 }
 
 initializePackageStorage();
@@ -428,6 +431,7 @@ function listInstalledPackages() {
     return 'No packages installed via simpack.';
   }
 
+  const commands = getCommands();
   let output = 'Installed packages:<br>';
   packages.forEach(pkg => {
     const installInfo = window.installedPackages[pkg];
@@ -449,6 +453,7 @@ function removePackage(packageName) {
   }
 
   delete window.installedPackages[packageName];
+  const commands = getCommands();
   if (commands[packageName]) {
     delete commands[packageName];
   }
@@ -514,6 +519,7 @@ function manageRepositories(args) {
 
 function debugPackages() {
   const packages = window.installedPackages;
+  const commands = getCommands();
   let output = '[DEBUG] Debug information:<br>';
   output += `[INFO] Packages in memory: ${Object.keys(packages).length}<br>`;
 
@@ -586,6 +592,8 @@ async function reloadPackages() {
   if (packagesToLoad.length === 0) {
     return output + 'No packages to reload.';
   }
+
+  const commands = getCommands();
 
   for (const packageName of packagesToLoad) {
     try {

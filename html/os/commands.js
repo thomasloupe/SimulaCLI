@@ -164,6 +164,7 @@ async function loadInstalledPackages() {
   }
 
   console.log('[COMPLETE] Final commands list:', Object.keys(commands).sort());
+  window.debugCommands = commands;
 }
 
 export async function executeCommand(input) {
