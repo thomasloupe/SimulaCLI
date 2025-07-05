@@ -265,6 +265,7 @@ export class AutoComplete {
         }
         current += char;
       } else if (char === quoteChar && inQuotes) {
+        // End of quoted string
         inQuotes = false;
         quoteChar = '';
         current += char;
@@ -308,9 +309,9 @@ export class AutoComplete {
 
     let text = lastArg.text;
     if (lastArg.inQuotes && text.length >= 2) {
-      text = text.slice(1);
+      text = text.slice(1); // Remove starting quote
       if (text.endsWith('"') || text.endsWith("'")) {
-        text = text.slice(0, -1);
+        text = text.slice(0, -1); // Remove ending quote
       }
     }
 
@@ -392,15 +393,31 @@ export class AutoComplete {
     let newCursor;
 
     if (currentPart.inQuotes) {
-      const quoteChar = currentPart.originalText[0];
       let replacement = suggestionText;
 
       if (replacement.startsWith('"') || replacement.startsWith("'")) {
         replacement = replacement.slice(1, -1);
       }
 
-      newInput = before + quoteChar + replacement + quoteChar + after;
-      newCursor = currentPart.start + replacement.length + 2;
+      let quoteStart = currentPart.start;
+      while (quoteStart > 0 && input[quoteStart - 1] !== '"' && input[quoteStart - 1] !== "'") {
+        quoteStart--;
+      }
+      if (quoteStart > 0) quoteStart--; // Include the quote
+
+      let quoteEnd = currentPart.end;
+      const quoteChar = input[quoteStart];
+
+      if (input[quoteEnd] === quoteChar) {
+        quoteEnd++; // Include the closing quote
+      }
+
+      const beforeQuote = input.substring(0, quoteStart);
+      const afterQuote = input.substring(quoteEnd);
+
+      newInput = beforeQuote + quoteChar + replacement + quoteChar + afterQuote;
+      newCursor = quoteStart + 1 + replacement.length;
+
     } else {
       newInput = before + suggestionText + after;
       newCursor = currentPart.start + suggestionText.length;
