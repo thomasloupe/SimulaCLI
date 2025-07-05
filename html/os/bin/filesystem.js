@@ -46,6 +46,7 @@ class FilesystemManager {
       '',
       'home/',
       'home/simulaclient/',
+      'simulaclient/',
       'uploads/',
       'files/',
       'data/',
@@ -53,16 +54,23 @@ class FilesystemManager {
       'public/',
       'assets/',
       'content/',
-      'media/'
+      'media/',
+      'images/',
+      'audio/',
+      'video/',
+      'tmp/',
+      'www/',
+      'html/',
+      'htdocs/'
     ];
   }
 
   async discoverServerFiles() {
-    console.log('[DISCOVERY] Starting server file discovery...');
+    console.log('[DISCOVERY] Starting comprehensive server file discovery...');
 
     try {
       await this.discoverViaDirectoryListings();
-      await this.discoverViaAlternativeMethods();
+      await this.discoverViaCommonPaths();
       this.integrateServerFiles();
 
       console.log(`[DISCOVERY] Complete. Found ${this.discoveredServerFiles.size} server files.`);
@@ -73,33 +81,46 @@ class FilesystemManager {
   }
 
   async discoverViaDirectoryListings() {
+    console.log('[DISCOVERY] Checking directory listings...');
+    let foundAny = false;
+
     for (const dirPath of this.directoryPaths) {
       try {
         const response = await fetch(dirPath, {
           method: 'GET',
-          headers: { 'Accept': 'text/html' }
+          headers: { 'Accept': 'text/html' },
+          signal: AbortSignal.timeout(3000)
         });
 
         if (response.ok) {
           const html = await response.text();
           const files = this.parseDirectoryListing(html, dirPath);
 
-          for (const file of files) {
-            if (!this.isProtectedFile(file.name)) {
-              this.discoveredServerFiles.set(`${dirPath}${file.name}`, {
-                name: file.name,
-                path: dirPath,
-                serverPath: `${dirPath}${file.name}`,
-                size: file.size || 'unknown',
-                lastModified: file.lastModified || new Date().toISOString(),
-                type: file.name.includes('.') ? 'file' : 'unknown'
-              });
-              console.log(`[DISCOVERY] Found: ${dirPath}${file.name}`);
+          if (files.length > 0) {
+            console.log(`[DISCOVERY] Found ${files.length} files in ${dirPath}`);
+            foundAny = true;
+
+            for (const file of files) {
+              if (!this.isProtectedFile(file.name)) {
+                this.discoveredServerFiles.set(`${dirPath}${file.name}`, {
+                  name: file.name,
+                  path: dirPath,
+                  serverPath: `${dirPath}${file.name}`,
+                  size: file.size || 'unknown',
+                  lastModified: file.lastModified || new Date().toISOString(),
+                  type: file.name.includes('.') ? 'file' : 'unknown'
+                });
+                console.log(`[DISCOVERY] Added: ${dirPath}${file.name}`);
+              }
             }
           }
         }
       } catch (error) {
       }
+    }
+
+    if (!foundAny) {
+      console.log('[DISCOVERY] No directory listings found, server may not support them');
     }
   }
 
@@ -112,73 +133,113 @@ class FilesystemManager {
     while ((match = apachePattern.exec(html)) !== null) {
       const [, href, name] = match;
 
-      if (href === '../' || href === './' || href === '#') continue;
+      if (href === '../' || href === './' || href === '#' || href === '/') continue;
 
       if (href.endsWith('/')) continue;
 
+      if (href.startsWith('http') || href.startsWith('ftp') || href.startsWith('mailto')) continue;
+
+      const filename = decodeURIComponent(href);
+
       files.push({
-        name: decodeURIComponent(href),
+        name: filename,
         lastModified: new Date().toISOString(),
         size: 'unknown'
       });
     }
 
-    const linkPattern = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/g;
+    const tableRowPattern = /<tr[^>]*>.*?<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>.*?(?:(\d+(?:\.\d+)?[KMGT]?B?|\d+).*?)?<\/tr>/gi;
 
-    while ((match = linkPattern.exec(html)) !== null) {
-      const [, href, linkText] = match;
+    while ((match = tableRowPattern.exec(html)) !== null) {
+      const [, href, name, sizeStr] = match;
 
-      if (href === '../' || href.startsWith('?') || href.startsWith('#') ||
-          href.endsWith('/') || href.startsWith('javascript:')) continue;
+      if (href && !href.endsWith('/') && !href.startsWith('?') && !href.startsWith('#')) {
+        const filename = decodeURIComponent(href);
+        let size = 'unknown';
 
-      if (href.includes('.') && !href.includes('..')) {
-        const filename = href.split('/').pop();
-        if (filename && filename.includes('.')) {
+        if (sizeStr && /^\d+/.test(sizeStr)) {
+          size = sizeStr.trim();
+        }
+
+        if (!files.some(f => f.name === filename)) {
           files.push({
             name: filename,
             lastModified: new Date().toISOString(),
-            size: 'unknown'
+            size: size
           });
         }
       }
     }
 
-    return files;
+    const simpleLinkPattern = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi;
+
+    while ((match = simpleLinkPattern.exec(html)) !== null) {
+      const [, href, linkText] = match;
+
+      if (href === '../' || href.startsWith('?') || href.startsWith('#') ||
+          href.endsWith('/') || href.startsWith('javascript:') ||
+          href.startsWith('http') || href.startsWith('mailto') || href.startsWith('ftp')) continue;
+
+      const filename = href.split('/').pop();
+      if (filename && !files.some(f => f.name === filename)) {
+        files.push({
+          name: filename,
+          lastModified: new Date().toISOString(),
+          size: 'unknown'
+        });
+      }
+    }
+
+    const uniqueFiles = files.filter((file, index, self) =>
+      index === self.findIndex(f => f.name === file.name)
+    );
+
+    return uniqueFiles;
   }
 
-  async discoverViaAlternativeMethods() {
-    const commonFiles = [
-      'readme.txt', 'README.md', 'readme.md', 'README.txt',
-      'changelog.txt', 'CHANGELOG.md', 'license.txt', 'LICENSE',
-      'notes.txt', 'info.txt', 'about.txt', 'contact.txt',
-      'data.txt', 'data.csv', 'data.json', 'config.json',
-      'settings.json', 'package.json', 'sitemap.xml', 'robots.txt'
-    ];
+  async discoverViaCommonPaths() {
+    console.log('[DISCOVERY] Checking all directories for any files...');
+
+    let foundFiles = 0;
 
     for (const dirPath of this.directoryPaths) {
-      for (const filename of commonFiles) {
-        try {
-          const fullPath = dirPath + filename;
-          const response = await fetch(fullPath, { method: 'HEAD' });
+      try {
+        const response = await fetch(dirPath, {
+          method: 'GET',
+          headers: { 'Accept': 'text/html' },
+          signal: AbortSignal.timeout(3000)
+        });
 
-          if (response.ok && !this.isProtectedFile(filename)) {
-            const size = response.headers.get('content-length') || 'unknown';
-            const lastModified = response.headers.get('last-modified') || new Date().toISOString();
+        if (response.ok) {
+          const html = await response.text();
+          const files = this.parseDirectoryListing(html, dirPath);
 
-            this.discoveredServerFiles.set(fullPath, {
-              name: filename,
-              path: dirPath,
-              serverPath: fullPath,
-              size: size,
-              lastModified: lastModified,
-              type: 'file'
-            });
+          for (const file of files) {
+            if (!this.isProtectedFile(file.name)) {
+              const fullPath = dirPath + file.name;
 
-            console.log(`[DISCOVERY] Found via HEAD: ${fullPath}`);
+              if (!this.discoveredServerFiles.has(fullPath)) {
+                this.discoveredServerFiles.set(fullPath, {
+                  name: file.name,
+                  path: dirPath,
+                  serverPath: fullPath,
+                  size: file.size,
+                  lastModified: file.lastModified,
+                  type: 'file'
+                });
+
+                console.log(`[DISCOVERY] Found: ${fullPath} (${file.size})`);
+                foundFiles++;
+              }
+            }
           }
-        } catch (error) {
         }
+      } catch (error) {
       }
+    }
+
+    if (foundFiles > 0) {
+      console.log(`[DISCOVERY] Found ${foundFiles} files via directory listings`);
     }
   }
 
@@ -224,6 +285,7 @@ class FilesystemManager {
       '': '/',
       'home/': '/home',
       'home/simulaclient/': '/home/simulaclient',
+      'simulaclient/': '/home/simulaclient',
       'uploads/': '/uploads',
       'files/': '/files',
       'data/': '/data',
@@ -231,7 +293,14 @@ class FilesystemManager {
       'public/': '/public',
       'assets/': '/assets',
       'content/': '/content',
-      'media/': '/media'
+      'media/': '/media',
+      'images/': '/images',
+      'audio/': '/audio',
+      'video/': '/video',
+      'tmp/': '/tmp',
+      'www/': '/www',
+      'html/': '/html',
+      'htdocs/': '/htdocs'
     };
 
     return pathMappings[serverPath] || `/${serverPath.replace(/\/$/, '')}`;
@@ -326,7 +395,7 @@ class FilesystemManager {
   }
 }
 
-const fsManager = new FilesystemManager();
+const filesystemManager = new FilesystemManager();
 
 async function loadFileSystem() {
   try {
@@ -345,11 +414,11 @@ async function loadFileSystem() {
       }
     }
 
-    console.log('[FILESYSTEM] Discovering server files...');
-    await fsManager.discoverServerFiles();
+    console.log('[FILESYSTEM] Auto-discovering all server files...');
+    await filesystemManager.discoverServerFiles();
 
     resetToRoot();
-    fsManager.startMonitoring();
+    filesystemManager.startMonitoring();
 
     console.log('[FILESYSTEM] Filesystem ready');
 
@@ -384,7 +453,7 @@ async function loadFileSystem() {
 function resetToRoot() {
   currentDirectory = fileSystem["/"];
   currentPath = "/";
-  currentDirectory = fsManager.filterProtectedFiles(currentDirectory);
+  currentDirectory = filesystemManager.filterProtectedFiles(currentDirectory);
 }
 
 async function updateCurrentDirectory(newPath) {
@@ -393,11 +462,11 @@ async function updateCurrentDirectory(newPath) {
     return cur === "" ? acc : acc.children[cur];
   }, fileSystem["/"]);
 
-  currentDirectory = fsManager.filterProtectedFiles(currentDirectory);
+  currentDirectory = filesystemManager.filterProtectedFiles(currentDirectory);
 }
 
 function saveFilesystem() {
-  fsManager.saveFilesystem();
+  filesystemManager.saveFilesystem();
 }
 
 function resetFilesystem() {
@@ -424,7 +493,7 @@ function getFilesystemStats() {
       virtualFiles: totalItems - serverFiles,
       currentPath: currentPath,
       protectedFiles: OS_PROTECTED_FILES.length,
-      monitoringActive: fsManager.isMonitoring
+      monitoringActive: filesystemManager.isMonitoring
     };
   } catch (error) {
     return {
@@ -441,7 +510,7 @@ function countItems(directory) {
   let count = 0;
   if (directory.children) {
     for (const [name, item] of Object.entries(directory.children)) {
-      if (!fsManager.isProtectedFile(name)) {
+      if (!filesystemManager.isProtectedFile(name)) {
         count++;
         if (item.type === 'directory') {
           count += countItems(item);
@@ -456,7 +525,7 @@ function countServerFiles(directory) {
   let count = 0;
   if (directory.children) {
     for (const [name, item] of Object.entries(directory.children)) {
-      if (!fsManager.isProtectedFile(name)) {
+      if (!filesystemManager.isProtectedFile(name)) {
         if (item.serverFile) {
           count++;
         }
@@ -482,7 +551,7 @@ export {
   saveFilesystem,
   resetFilesystem,
   getFilesystemStats,
-  fsManager as filesystemManager,
+  filesystemManager,
   DEFAULT_PERMISSIONS,
   OS_PROTECTED_FILES
 };
