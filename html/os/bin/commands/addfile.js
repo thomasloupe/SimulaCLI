@@ -4,7 +4,7 @@ import { fileSystem, saveFilesystem } from '../filesystem.js';
 
 export default async function addfile(...args) {
   if (!isCurrentlyRoot()) {
-    return 'addfile: Permission denied. This command requires root access.';
+    return 'addfile: Permission denied. This command requires root access.<br>Use "su - root" to switch to root user.';
   }
 
   return new Promise((resolve) => {
@@ -20,6 +20,7 @@ export default async function addfile(...args) {
 
     if (commandInput && terminal) {
       terminal.innerHTML += '<div><strong>Add File to Virtual Filesystem</strong></div>';
+      terminal.innerHTML += '<div>This tool allows you to add files from your web server to the virtual filesystem.</div>';
       terminal.innerHTML += '<div>Enter the virtual path where this file should appear (e.g., /home/simulaclient/photo.jpg):</div>';
       terminal.innerHTML += '<div>Virtual path: </div>';
       terminal.scrollTop = terminal.scrollHeight;
@@ -81,21 +82,20 @@ async function processStep(input) {
   switch (state.step) {
     case 'virtualPath':
       if (!input.startsWith('/')) {
-        terminal.innerHTML += '<div>Error: Virtual path must start with /</div>';
+        terminal.innerHTML += '<div>Error: Virtual path must start with / (e.g., /home/simulaclient/file.txt)</div>';
         terminal.innerHTML += '<div>Virtual path: </div>';
         return;
       }
       state.data.virtualPath = input;
-      terminal.innerHTML += '<div>Server path (path from web root, e.g., os/home/simulaclient/photo.jpg):</div>';
+      terminal.innerHTML += '<div>Server path (path from web root, e.g., uploads/photo.jpg):</div>';
       terminal.innerHTML += '<div>Server path: </div>';
-      commandInput.placeholder = 'Server path (e.g., os/home/simulaclient/photo.jpg)';
+      commandInput.placeholder = 'Server path (e.g., uploads/photo.jpg)';
       state.step = 'serverPath';
       break;
 
     case 'serverPath':
       state.data.serverPath = input;
 
-      // Test if the file exists
       terminal.innerHTML += '<div>Testing server file...</div>';
       const exists = await testServerFile(input);
       if (!exists) {
@@ -236,12 +236,10 @@ async function createFileInFilesystem() {
   const state = window.addfileState;
 
   try {
-    // Parse virtual path
     const pathParts = state.data.virtualPath.split('/').filter(Boolean);
     const fileName = pathParts.pop();
     const dirPath = '/' + pathParts.join('/');
 
-    // Navigate to target directory in filesystem
     let targetDir = fileSystem['/'];
 
     if (dirPath !== '/') {
@@ -251,7 +249,6 @@ async function createFileInFilesystem() {
           targetDir.children = {};
         }
         if (!targetDir.children[segment]) {
-          // Create missing directories
           targetDir.children[segment] = {
             type: 'directory',
             owner: 'root',
@@ -270,12 +267,10 @@ async function createFileInFilesystem() {
       targetDir.children = {};
     }
 
-    // Check if file already exists
     if (targetDir.children[fileName]) {
       terminal.innerHTML += '<div>Warning: File already exists. Overwriting...</div>';
     }
 
-    // Create the file entry
     const timestamp = new Date().toISOString();
     targetDir.children[fileName] = {
       type: state.data.type,
@@ -297,7 +292,6 @@ async function createFileInFilesystem() {
       targetDir.children[fileName].children = {};
     }
 
-    // Save filesystem
     saveFilesystem();
 
     terminal.innerHTML += '<div><strong>✓ File added successfully!</strong></div>';
@@ -308,12 +302,15 @@ async function createFileInFilesystem() {
       (state.data.downloadable ? 'downloadable ' : '') +
       (state.data.viewable ? 'viewable ' : '') +
       (state.data.playable ? 'playable' : '') + '</div>';
+    terminal.innerHTML += '<div></div>';
+    terminal.innerHTML += '<div><strong>Note:</strong> This file is now part of the virtual filesystem and will</div>';
+    terminal.innerHTML += '<div>persist in localStorage. Users can interact with it using SimulaCLI commands.</div>';
 
     cleanup();
     window.addfileState.resolve('');
 
   } catch (error) {
-    terminal.innerHTML += `<div>Error creating file: ${error.message}</div>';
+    terminal.innerHTML += `<div>Error creating file: ${error.message}</div>`;
     cleanup();
     window.addfileState.resolve(`addfile: Error creating file: ${error.message}`);
   }

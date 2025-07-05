@@ -46,57 +46,6 @@
             "children": {}
           }
         }
-      },
-      "sfx": {
-        "type": "directory",
-        "owner": "root",
-        "permissions": "rwx",
-        "children": {
-          "return.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "os/sfx/return.mp3",
-            "size": "48000"
-          },
-          "shutdown.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "os/sfx/shutdown.mp3",
-            "size": "52000"
-          },
-          "terminal.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "os/sfx/terminal.mp3",
-            "size": "45000"
-          },
-          "terminal1.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "os/sfx/terminal1.mp3",
-            "size": "42000"
-          }
-        }
       }
     }
   }

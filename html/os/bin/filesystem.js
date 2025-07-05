@@ -1,4 +1,4 @@
-// filesystem.js - Virtual filesystem with manual file management
+// filesystem.js - Virtual filesystem for SimulaCLI
 let fileSystem = {};
 let currentDirectory = {};
 let currentPath = "/";
@@ -22,7 +22,7 @@ const OS_PROTECTED_FILES = [
   'helpers.js',
 
   // All command files in bin/commands/
-  'addfile', 'alias.js', 'awk.js', 'cat.js', 'cd.js', 'chmod.js', 'chown.js', 'clear.js', 'cp.js', 'curl.js', 'cut.js',
+  'addfile.js', 'alias.js', 'awk.js', 'cat.js', 'cd.js', 'chmod.js', 'chown.js', 'clear.js', 'cp.js', 'curl.js', 'cut.js',
   'date.js', 'diff.js', 'dig.js', 'echo.js', 'exit.js', 'file.js', 'find.js', 'free.js', 'grep.js',
   'head.js', 'help.js', 'history.js', 'hostname.js', 'ifconfig.js', 'ip_addr.js', 'less.js', 'll.js',
   'logout.js', 'ls.js', 'mkdir.js', 'more.js', 'mv.js', 'nslookup.js', 'passwd.js', 'ping.js',
@@ -30,10 +30,10 @@ const OS_PROTECTED_FILES = [
   'sleep.js', 'sort.js', 'su.js', 'sudo.js', 'tail.js', 'termconfig.js', 'touch.js', 'tr.js',
   'unalias.js', 'uname.js', 'uniq.js', 'uptime.js', 'vi.js', 'view.js', 'wc.js', 'who.js', 'whoami.js',
 
-  // dev directory files
+  // dev files
   'sda.json',
 
-  // sfx directory files
+  // sfx files
   'return.mp3', 'shutdown.mp3', 'terminal.mp3', 'terminal1.mp3'
 ];
 
@@ -45,6 +45,9 @@ class FilesystemManager {
   isProtectedFile(filename) {
     return OS_PROTECTED_FILES.includes(filename) ||
            filename.startsWith('.') ||
+           filename.endsWith('.passwd') ||
+           filename.endsWith('.setup') ||
+           filename === 'auth.setup' ||
            filename.includes('system') ||
            filename.includes('boot') ||
            filename.endsWith('.php') ||
