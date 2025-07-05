@@ -1,6 +1,7 @@
 // operators.js - Command chaining, piping, and redirection system
 import { currentDirectory, currentPath, fileSystem } from './bin/filesystem.js';
 import { executeCommand } from './commands.js';
+import { parseCommandLine } from './argumentParser.js';
 
 // Supported operators in order of precedence
 const OPERATORS = {
@@ -176,7 +177,9 @@ async function handleRedirection(command, filenameToken, append = false) {
   // Clean the output (remove HTML tags for file storage)
   const cleanOutput = output.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
-  const filename = filenameToken.value;
+  // Parse the filename token properly to handle quotes
+  const { args } = parseCommandLine(filenameToken.value);
+  const filename = args[0] || filenameToken.value;
 
   // Write to file in current directory
   try {
@@ -201,12 +204,13 @@ async function handlePipe(firstCommand, secondCommandToken) {
   // Clean the output for piping
   const cleanOutput = firstOutput.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
+  // Parse the second command properly to handle quotes
+  const { command: baseCommand, args: commandArgs } = parseCommandLine(secondCommandToken.value);
+
   // For now, simulate piping by appending the output as an argument to the second command
-  const secondCommand = secondCommandToken.value;
-  const pipedCommand = `${secondCommand} "${cleanOutput}"`;
+  const pipedCommand = `${baseCommand} "${cleanOutput}" ${commandArgs.join(' ')}`.trim();
 
   // Check if the second command can handle piped input
-  const [baseCommand] = secondCommand.split(' ');
   const pipeSupportedCommands = ['grep', 'sort', 'uniq', 'wc', 'head', 'tail', 'cat'];
 
   if (pipeSupportedCommands.includes(baseCommand)) {

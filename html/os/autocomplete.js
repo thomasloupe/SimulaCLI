@@ -17,17 +17,16 @@ export class AutoComplete {
       this.completionState.originalInput = input;
     }
 
-    const parts = input.split(' ');
     const currentPart = this.getCurrentPart(input, cursorPosition);
     const partIndex = this.getPartIndex(input, cursorPosition);
 
     let suggestions = [];
 
     if (partIndex === 0) {
-      suggestions = this.getCommandCompletions(currentPart);
+      suggestions = this.getCommandCompletions(currentPart.text);
     } else {
-      const commandName = parts[0];
-      suggestions = this.getPathCompletions(currentPart, commandName);
+      const commandName = this.getCommandFromInput(input);
+      suggestions = this.getPathCompletions(currentPart.text, commandName);
     }
 
     if (suggestions.length === 0) {
@@ -88,11 +87,17 @@ export class AutoComplete {
         fullPath = `${pathInfo.directory}/${item.name}`;
       }
 
+      const needsQuotes = item.name.includes(' ');
+      const quotedName = needsQuotes ? `"${item.name}"` : item.name;
+      const quotedFullPath = needsQuotes ? `"${fullPath}"` : fullPath;
+
       return {
         name: item.name,
-        fullPath: fullPath,
+        fullPath: quotedFullPath,
+        unquotedFullPath: fullPath,
         isDirectory: item.isDirectory,
-        displayName: item.displayName
+        displayName: item.displayName,
+        needsQuotes: needsQuotes
       };
     });
   }
@@ -238,31 +243,168 @@ export class AutoComplete {
 
   getCurrentPart(input, cursorPosition) {
     const beforeCursor = input.substring(0, cursorPosition);
-    const parts = beforeCursor.split(' ');
-    return parts[parts.length - 1] || '';
+
+    let currentArg = '';
+    let argStart = 0;
+    let inQuotes = false;
+    let quoteChar = '';
+    let i = 0;
+
+    const args = [];
+    let current = '';
+    let currentStart = 0;
+
+    while (i < beforeCursor.length) {
+      const char = beforeCursor[i];
+
+      if ((char === '"' || char === "'") && !inQuotes) {
+        inQuotes = true;
+        quoteChar = char;
+        if (current === '') {
+          currentStart = i + 1;
+        }
+        current += char;
+      } else if (char === quoteChar && inQuotes) {
+        inQuotes = false;
+        quoteChar = '';
+        current += char;
+      } else if (char === ' ' && !inQuotes) {
+        if (current.length > 0) {
+          args.push({
+            text: current,
+            start: currentStart,
+            end: i,
+            inQuotes: current.startsWith('"') || current.startsWith("'")
+          });
+          current = '';
+        }
+        while (i + 1 < beforeCursor.length && beforeCursor[i + 1] === ' ') {
+          i++;
+        }
+        currentStart = i + 1;
+      } else {
+        if (current === '') {
+          currentStart = i;
+        }
+        current += char;
+      }
+
+      i++;
+    }
+
+    if (current.length > 0 || beforeCursor.endsWith(' ')) {
+      args.push({
+        text: current,
+        start: currentStart,
+        end: beforeCursor.length,
+        inQuotes: current.startsWith('"') || current.startsWith("'")
+      });
+    }
+
+    const lastArg = args[args.length - 1];
+    if (!lastArg) {
+      return { text: '', start: beforeCursor.length, end: beforeCursor.length, inQuotes: false };
+    }
+
+    let text = lastArg.text;
+    if (lastArg.inQuotes && text.length >= 2) {
+      text = text.slice(1);
+      if (text.endsWith('"') || text.endsWith("'")) {
+        text = text.slice(0, -1);
+      }
+    }
+
+    return {
+      text: text,
+      start: lastArg.start,
+      end: lastArg.end,
+      inQuotes: lastArg.inQuotes,
+      originalText: lastArg.text
+    };
   }
 
   getPartIndex(input, cursorPosition) {
     const beforeCursor = input.substring(0, cursorPosition);
-    const parts = beforeCursor.split(' ').filter(part => part.length > 0);
 
-    if (beforeCursor.endsWith(' ')) {
-      return parts.length;
+    let argCount = 0;
+    let inQuotes = false;
+    let quoteChar = '';
+    let hasContent = false;
+
+    for (let i = 0; i < beforeCursor.length; i++) {
+      const char = beforeCursor[i];
+
+      if ((char === '"' || char === "'") && !inQuotes) {
+        inQuotes = true;
+        quoteChar = char;
+        hasContent = true;
+      } else if (char === quoteChar && inQuotes) {
+        inQuotes = false;
+        quoteChar = '';
+      } else if (char === ' ' && !inQuotes) {
+        if (hasContent) {
+          argCount++;
+          hasContent = false;
+        }
+      } else if (char !== ' ') {
+        hasContent = true;
+      }
     }
 
-    return Math.max(0, parts.length - 1);
+    if (hasContent || beforeCursor.endsWith(' ')) {
+      return argCount;
+    }
+
+    return Math.max(0, argCount);
+  }
+
+  getCommandFromInput(input) {
+    let inQuotes = false;
+    let quoteChar = '';
+    let command = '';
+
+    for (let i = 0; i < input.length; i++) {
+      const char = input[i];
+
+      if ((char === '"' || char === "'") && !inQuotes) {
+        inQuotes = true;
+        quoteChar = char;
+      } else if (char === quoteChar && inQuotes) {
+        inQuotes = false;
+        quoteChar = '';
+      } else if (char === ' ' && !inQuotes) {
+        break;
+      } else {
+        command += char;
+      }
+    }
+
+    return command;
   }
 
   applySuggestion(input, currentPart, suggestion, cursorPosition) {
     const suggestionText = suggestion.fullPath || suggestion.name || suggestion;
 
-    const beforeCursor = input.substring(0, cursorPosition);
-    const partStart = beforeCursor.lastIndexOf(currentPart);
+    const before = input.substring(0, currentPart.start);
+    const after = input.substring(currentPart.end);
 
-    const before = input.substring(0, partStart);
-    const after = input.substring(partStart + currentPart.length);
-    const newInput = before + suggestionText + after;
-    const newCursor = partStart + suggestionText.length;
+    let newInput;
+    let newCursor;
+
+    if (currentPart.inQuotes) {
+      const quoteChar = currentPart.originalText[0];
+      let replacement = suggestionText;
+
+      if (replacement.startsWith('"') || replacement.startsWith("'")) {
+        replacement = replacement.slice(1, -1);
+      }
+
+      newInput = before + quoteChar + replacement + quoteChar + after;
+      newCursor = currentPart.start + replacement.length + 2;
+    } else {
+      newInput = before + suggestionText + after;
+      newCursor = currentPart.start + suggestionText.length;
+    }
 
     return {
       text: newInput,

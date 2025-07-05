@@ -53,10 +53,25 @@ function setupAddfileHandler() {
 
     if (event.ctrlKey && event.key.toLowerCase() === 'c') {
       event.preventDefault();
+
+      // Check if there's text selected
+      const selection = window.getSelection();
+      const selectedText = selection.toString();
+
+      if (selectedText && selectedText.trim().length > 0) {
+        // Text is selected, allow normal copy behavior by not preventing default
+        console.log('[ADDFILE] Text selected, allowing copy operation');
+        // Don't interrupt the command, just return
+        return;
+      }
+
+      // No text selected, interrupt the command
       terminal.innerHTML += '<div>^C</div>';
       terminal.innerHTML += '<div>addfile: Operation cancelled</div>';
       cleanup();
-      window.addfileState.resolve('addfile: Operation cancelled');
+      if (window.addfileState && window.addfileState.resolve) {
+        window.addfileState.resolve('addfile: Operation cancelled');
+      }
       return;
     }
 
@@ -70,7 +85,9 @@ function setupAddfileHandler() {
       } catch (error) {
         terminal.innerHTML += `<div>addfile: Error - ${error.message}</div>`;
         cleanup();
-        window.addfileState.resolve(`addfile: Error - ${error.message}`);
+        if (window.addfileState && window.addfileState.resolve) {
+          window.addfileState.resolve(`addfile: Error - ${error.message}`);
+        }
       }
     }
   };
@@ -82,6 +99,8 @@ async function processStep(input) {
   const terminal = document.getElementById('terminal');
   const commandInput = document.getElementById('commandInput');
   const state = window.addfileState;
+
+  if (!state) return;
 
   switch (state.step) {
     case 'virtualPath':
@@ -118,7 +137,9 @@ async function processStep(input) {
       if (input.toLowerCase() !== 'y' && input.toLowerCase() !== 'yes') {
         terminal.innerHTML += '<div>addfile: Operation cancelled</div>';
         cleanup();
-        window.addfileState.resolve('addfile: Operation cancelled');
+        if (window.addfileState && window.addfileState.resolve) {
+          window.addfileState.resolve('addfile: Operation cancelled');
+        }
         return;
       }
       askFileType();
@@ -220,7 +241,9 @@ function askFileType() {
 
   terminal.innerHTML += '<div>Type (file/directory): </div>';
   commandInput.placeholder = 'file or directory';
-  window.addfileState.step = 'type';
+  if (window.addfileState) {
+    window.addfileState.step = 'type';
+  }
 }
 
 async function testServerFile(serverPath) {
@@ -238,6 +261,8 @@ async function testServerFile(serverPath) {
 async function createFileInFilesystem() {
   const terminal = document.getElementById('terminal');
   const state = window.addfileState;
+
+  if (!state) return;
 
   try {
     const pathParts = state.data.virtualPath.split('/').filter(Boolean);
@@ -311,12 +336,16 @@ async function createFileInFilesystem() {
     terminal.innerHTML += '<div>persist in localStorage. Users can interact with it using SimulaCLI commands.</div>';
 
     cleanup();
-    window.addfileState.resolve('');
+    if (window.addfileState && window.addfileState.resolve) {
+      window.addfileState.resolve('');
+    }
 
   } catch (error) {
     terminal.innerHTML += `<div>Error creating file: ${error.message}</div>`;
     cleanup();
-    window.addfileState.resolve(`addfile: Error creating file: ${error.message}`);
+    if (window.addfileState && window.addfileState.resolve) {
+      window.addfileState.resolve(`addfile: Error creating file: ${error.message}`);
+    }
   }
 }
 
@@ -328,11 +357,12 @@ function cleanup() {
     commandInput.focus();
   }
 
-  window.addfileState = null;
   if (window.addfileHandler) {
     document.removeEventListener('keydown', window.addfileHandler, true);
     window.addfileHandler = null;
   }
+
+  window.addfileState = null;
 }
 
 addfile.help = "Add server files to virtual filesystem (root only). Usage: addfile";

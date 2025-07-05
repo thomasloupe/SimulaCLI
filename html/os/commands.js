@@ -1,6 +1,7 @@
 import { checkAccess } from './superuser.js';
 import { fileSystem, currentPath, currentDirectory, commandHistory, loadFileSystem } from './bin/filesystem.js';
 import { hasOperators, executeWithOperators } from './operators.js';
+import { parseCommandLine } from './argumentParser.js';
 import './repositories.js';
 
 loadFileSystem();
@@ -181,7 +182,7 @@ export async function executeCommand(input) {
     }
   }
 
-  const [command, ...args] = input.split(' ');
+  const { command, args } = parseCommandLine(input);
 
   const terminal = document.getElementById('terminal');
 

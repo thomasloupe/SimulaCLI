@@ -64,13 +64,17 @@ function makeUrlsClickable(text) {
     const linkColor = linkSettings.color || '#0ff';
     const hoverColor = linkSettings.hovercolor || '#fff';
 
-    // Regular expression to match URLs (http, https, or just domain names)
-    const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)/g;
+    // More restrictive regex - only match actual URLs with protocols or www
+    const urlRegex = /(https?:\/\/[^\s<>"']+|ftp:\/\/[^\s<>"']+|www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s<>"']*)/g;
 
     return text.replace(urlRegex, (url) => {
         // Ensure the URL has a protocol
         let href = url;
-        if (!url.match(/^https?:\/\//)) {
+        if (url.startsWith('www.')) {
+            href = 'https://' + url;
+        } else if (url.startsWith('ftp://')) {
+            href = url;
+        } else if (!url.match(/^https?:\/\//)) {
             href = 'https://' + url;
         }
 

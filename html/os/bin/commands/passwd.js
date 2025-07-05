@@ -71,6 +71,17 @@ function setupPasswdHandler() {
     if (event.ctrlKey && event.key.toLowerCase() === 'c') {
       event.preventDefault();
 
+      // Check if there's text selected
+      const selection = window.getSelection();
+      const selectedText = selection.toString();
+
+      if (selectedText && selectedText.trim().length > 0) {
+        // Text is selected, allow normal copy behavior
+        console.log('[PASSWD] Text selected, allowing copy operation');
+        return;
+      }
+
+      // No text selected, interrupt the command
       terminal.innerHTML += '<div>^C</div>';
       terminal.innerHTML += '<div>passwd: Operation cancelled</div>';
       terminal.scrollTop = terminal.scrollHeight;
