@@ -1,4 +1,3 @@
-// autocomplete.js - Enhanced tab completion system with path navigation
 import { currentDirectory, fileSystem } from './bin/filesystem.js';
 import { commands } from './commands.js';
 
@@ -13,7 +12,6 @@ export class AutoComplete {
   }
 
   handleTabCompletion(input, cursorPosition) {
-    // Reset completion state if input changed
     if (input !== this.completionState.originalInput) {
       this.resetCompletionState();
       this.completionState.originalInput = input;
@@ -148,7 +146,7 @@ export class AutoComplete {
 
     if (pathStr.startsWith('/')) {
       targetDir = fileSystem['/'];
-      pathStr = pathStr.substring(1); // Remove leading slash
+      pathStr = pathStr.substring(1);
     } else {
       targetDir = currentDirectory;
     }

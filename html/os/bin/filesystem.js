@@ -1,4 +1,3 @@
-// filesystem.js - SimulaCLI filesystem
 let fileSystem = {};
 let currentDirectory = {};
 let currentPath = "/";
@@ -12,7 +11,8 @@ const OS_PROTECTED_FILES = [
   'superuser.js',
   'operators.js',
   'repositories.js',
-  'autocomplete.js'
+  'autocomplete.js',
+  'index.html'
 ];
 
 const DEFAULT_PERMISSIONS = {
@@ -40,286 +40,250 @@ const DEFAULT_PERMISSIONS = {
 
 class FilesystemManager {
   constructor() {
+    this.discoveredServerFiles = new Map();
     this.isMonitoring = false;
-    this.scannedPaths = new Set();
-    this.initializeFileSystemIntegration();
+    this.directoryPaths = [
+      '',
+      'home/',
+      'home/simulaclient/',
+      'uploads/',
+      'files/',
+      'data/',
+      'documents/',
+      'public/',
+      'assets/',
+      'content/',
+      'media/'
+    ];
   }
 
-  initializeFileSystemIntegration() {
-    if (typeof window !== 'undefined') {
-      this.startMonitoring();
-    }
-  }
-
-  getFileExtension(filename) {
-    const lastDot = filename.lastIndexOf('.');
-    return lastDot !== -1 ? filename.substring(lastDot).toLowerCase() : '';
-  }
-
-  getDefaultPermissions(filename) {
-    const extension = this.getFileExtension(filename);
-    return DEFAULT_PERMISSIONS[extension] || DEFAULT_PERMISSIONS.default;
-  }
-
-  async scanDirectoryForFiles(virtualPath) {
-    if (this.scannedPaths.has(virtualPath)) {
-      return false;
-    }
-
-    const serverPath = this.virtualPathToServerPath(virtualPath);
-    console.log(`[FILESYSTEM] Scanning for files at virtual path: ${virtualPath}, server path: ${serverPath}`);
+  async discoverServerFiles() {
+    console.log('[DISCOVERY] Starting server file discovery...');
 
     try {
-      const detectedFiles = await this.detectFilesInPath(serverPath);
+      await this.discoverViaDirectoryListings();
+      await this.discoverViaAlternativeMethods();
+      this.integrateServerFiles();
 
-      if (detectedFiles.length > 0) {
-        console.log(`[FILESYSTEM] Found ${detectedFiles.length} files in ${virtualPath}:`, detectedFiles);
-        this.addDetectedFilesToFilesystem(virtualPath, detectedFiles);
-        this.scannedPaths.add(virtualPath);
-        return true;
-      }
+      console.log(`[DISCOVERY] Complete. Found ${this.discoveredServerFiles.size} server files.`);
+
     } catch (error) {
-      console.log(`[FILESYSTEM] Could not scan ${virtualPath}:`, error.message);
+      console.log('[DISCOVERY] Server file discovery had errors:', error);
     }
-
-    this.scannedPaths.add(virtualPath);
-    return false;
   }
 
-  virtualPathToServerPath(virtualPath) {
-    const pathMappings = {
-      '/home/simulaclient': '',
-      '/home': '',
-      '/': '',
-      '/bin': 'os/bin',
-      '/etc': 'os/etc',
-      '/sfx': 'os/sfx'
-    };
-
-    const sortedPaths = Object.keys(pathMappings).sort((a, b) => b.length - a.length);
-
-    for (const vPath of sortedPaths) {
-      if (virtualPath.startsWith(vPath)) {
-        const relativePath = virtualPath.substring(vPath.length);
-        const serverBase = pathMappings[vPath];
-
-        if (serverBase) {
-          return serverBase + relativePath.replace(/^\//, '/');
-        } else {
-          return relativePath.replace(/^\//, '');
-        }
-      }
-    }
-
-    return virtualPath.replace(/^\//, '');
-  }
-
-  async detectFilesInPath(serverPath) {
-    const detectedFiles = [];
-    const commonFiles = [
-      'readme.txt', 'README.md', 'index.html', 'config.txt', 'settings.json',
-      'data.csv', 'log.txt', 'notes.md', 'info.txt', 'changelog.txt',
-      'image.jpg', 'photo.png', 'picture.gif', 'icon.svg',
-      'music.mp3', 'sound.wav', 'audio.ogg',
-      'video.mp4', 'movie.avi', 'clip.mov',
-      'script.sh', 'app.js', 'program.py', 'code.html',
-      'document.pdf', 'spreadsheet.xlsx', 'presentation.pptx'
-    ];
-
-    for (const filename of commonFiles) {
+  async discoverViaDirectoryListings() {
+    for (const dirPath of this.directoryPaths) {
       try {
-        const testPath = serverPath ? `${serverPath}/${filename}` : filename;
-        const response = await fetch(testPath, { method: 'HEAD' });
+        const response = await fetch(dirPath, {
+          method: 'GET',
+          headers: { 'Accept': 'text/html' }
+        });
 
         if (response.ok) {
-          const contentLength = response.headers.get('content-length') || '0';
-          detectedFiles.push({
+          const html = await response.text();
+          const files = this.parseDirectoryListing(html, dirPath);
+
+          for (const file of files) {
+            if (!this.isProtectedFile(file.name)) {
+              this.discoveredServerFiles.set(`${dirPath}${file.name}`, {
+                name: file.name,
+                path: dirPath,
+                serverPath: `${dirPath}${file.name}`,
+                size: file.size || 'unknown',
+                lastModified: file.lastModified || new Date().toISOString(),
+                type: file.name.includes('.') ? 'file' : 'unknown'
+              });
+              console.log(`[DISCOVERY] Found: ${dirPath}${file.name}`);
+            }
+          }
+        }
+      } catch (error) {
+      }
+    }
+  }
+
+  parseDirectoryListing(html, basePath) {
+    const files = [];
+
+    const apachePattern = /<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g;
+    let match;
+
+    while ((match = apachePattern.exec(html)) !== null) {
+      const [, href, name] = match;
+
+      if (href === '../' || href === './' || href === '#') continue;
+
+      if (href.endsWith('/')) continue;
+
+      files.push({
+        name: decodeURIComponent(href),
+        lastModified: new Date().toISOString(),
+        size: 'unknown'
+      });
+    }
+
+    const linkPattern = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/g;
+
+    while ((match = linkPattern.exec(html)) !== null) {
+      const [, href, linkText] = match;
+
+      if (href === '../' || href.startsWith('?') || href.startsWith('#') ||
+          href.endsWith('/') || href.startsWith('javascript:')) continue;
+
+      if (href.includes('.') && !href.includes('..')) {
+        const filename = href.split('/').pop();
+        if (filename && filename.includes('.')) {
+          files.push({
             name: filename,
-            size: contentLength,
-            lastModified: response.headers.get('last-modified') || new Date().toISOString()
+            lastModified: new Date().toISOString(),
+            size: 'unknown'
           });
-          console.log(`[DETECT] Found file: ${testPath}`);
         }
-      } catch (error) {
       }
     }
 
-    const uploadPatterns = [
-      'upload.txt', 'data.txt', 'file.txt', 'document.txt',
-      'backup.txt', 'export.csv', 'import.json', 'temp.log'
-    ];
-
-    for (const pattern of uploadPatterns) {
-      try {
-        const testPath = serverPath ? `${serverPath}/${pattern}` : pattern;
-        const response = await fetch(testPath, { method: 'HEAD' });
-
-        if (response.ok) {
-          const contentLength = response.headers.get('content-length') || '0';
-          detectedFiles.push({
-            name: pattern,
-            size: contentLength,
-            lastModified: response.headers.get('last-modified') || new Date().toISOString()
-          });
-          console.log(`[DETECT] Found uploaded file: ${testPath}`);
-        }
-      } catch (error) {
-      }
-    }
-
-    return detectedFiles;
+    return files;
   }
 
-  addDetectedFilesToFilesystem(virtualPath, detectedFiles) {
-    try {
-      let targetDir = this.getDirectoryAtPath(virtualPath);
+  async discoverViaAlternativeMethods() {
+    const commonFiles = [
+      'readme.txt', 'README.md', 'readme.md', 'README.txt',
+      'changelog.txt', 'CHANGELOG.md', 'license.txt', 'LICENSE',
+      'notes.txt', 'info.txt', 'about.txt', 'contact.txt',
+      'data.txt', 'data.csv', 'data.json', 'config.json',
+      'settings.json', 'package.json', 'sitemap.xml', 'robots.txt'
+    ];
 
-      if (!targetDir) {
-        console.log(`[FILESYSTEM] Directory ${virtualPath} not found, creating it`);
-        targetDir = this.createDirectoryPath(virtualPath);
+    for (const dirPath of this.directoryPaths) {
+      for (const filename of commonFiles) {
+        try {
+          const fullPath = dirPath + filename;
+          const response = await fetch(fullPath, { method: 'HEAD' });
+
+          if (response.ok && !this.isProtectedFile(filename)) {
+            const size = response.headers.get('content-length') || 'unknown';
+            const lastModified = response.headers.get('last-modified') || new Date().toISOString();
+
+            this.discoveredServerFiles.set(fullPath, {
+              name: filename,
+              path: dirPath,
+              serverPath: fullPath,
+              size: size,
+              lastModified: lastModified,
+              type: 'file'
+            });
+
+            console.log(`[DISCOVERY] Found via HEAD: ${fullPath}`);
+          }
+        } catch (error) {
+        }
       }
+    }
+  }
+
+  integrateServerFiles() {
+    console.log('[INTEGRATION] Integrating server files into virtual filesystem...');
+
+    for (const [serverPath, fileInfo] of this.discoveredServerFiles) {
+      const virtualPath = this.serverPathToVirtualPath(fileInfo.path);
+      const targetDir = this.ensureDirectoryExists(virtualPath);
 
       if (!targetDir.children) {
         targetDir.children = {};
       }
 
-      for (const fileInfo of detectedFiles) {
-        if (!targetDir.children[fileInfo.name]) {
-          const defaultPerms = this.getDefaultPermissions(fileInfo.name);
-          const serverPath = this.virtualPathToServerPath(virtualPath);
-          const filePath = serverPath ? `${serverPath}/${fileInfo.name}` : fileInfo.name;
+      if (!targetDir.children[fileInfo.name]) {
+        const perms = this.getDefaultPermissions(fileInfo.name);
 
-          targetDir.children[fileInfo.name] = {
-            type: 'file',
-            owner: 'simulaclient',
-            permissions: defaultPerms.permissions,
-            downloadable: defaultPerms.downloadable,
-            viewable: defaultPerms.viewable,
-            playable: defaultPerms.playable,
-            content: '',
-            goto: filePath,
-            size: fileInfo.size,
-            created: fileInfo.lastModified,
-            modified: fileInfo.lastModified,
-            detected: true
-          };
+        targetDir.children[fileInfo.name] = {
+          type: 'file',
+          owner: 'root',
+          permissions: 'r--',
+          downloadable: perms.downloadable,
+          viewable: perms.viewable,
+          playable: perms.playable,
+          content: '',
+          goto: fileInfo.serverPath,
+          size: fileInfo.size.toString(),
+          created: fileInfo.lastModified,
+          modified: fileInfo.lastModified,
+          serverFile: true,
+          superuser: "true"
+        };
 
-          console.log(`[FILESYSTEM] Added detected file: ${virtualPath}/${fileInfo.name} -> ${filePath}`);
-        }
+        console.log(`[INTEGRATION] Added server file: ${virtualPath}/${fileInfo.name}`);
       }
-
-      this.saveFilesystem();
-    } catch (error) {
-      console.error('[FILESYSTEM] Error adding detected files:', error);
     }
+
+    this.saveFilesystem();
   }
 
-  getDirectoryAtPath(path) {
-    try {
-      let current = fileSystem['/'];
-
-      if (path === '/') {
-        return current;
-      }
-
-      const segments = path.split('/').filter(Boolean);
-
-      for (const segment of segments) {
-        if (current.children && current.children[segment] && current.children[segment].type === 'directory') {
-          current = current.children[segment];
-        } else {
-          return null;
-        }
-      }
-
-      return current;
-    } catch (error) {
-      console.error('[FILESYSTEM] Error getting directory at path:', error);
-      return null;
-    }
-  }
-
-  createDirectoryPath(path) {
-    try {
-      let current = fileSystem['/'];
-
-      if (path === '/') {
-        return current;
-      }
-
-      const segments = path.split('/').filter(Boolean);
-
-      for (const segment of segments) {
-        if (!current.children) {
-          current.children = {};
-        }
-
-        if (!current.children[segment]) {
-          current.children[segment] = {
-            type: 'directory',
-            owner: 'simulaclient',
-            permissions: 'rwx',
-            children: {},
-            created: new Date().toISOString(),
-            modified: new Date().toISOString()
-          };
-        }
-
-        current = current.children[segment];
-      }
-
-      return current;
-    } catch (error) {
-      console.error('[FILESYSTEM] Error creating directory path:', error);
-      return null;
-    }
-  }
-
-  createFileFromExisting(filename, path, stats = {}) {
-    const extension = this.getFileExtension(filename);
-    const defaultPerms = this.getDefaultPermissions(filename);
-
-    const fileObject = {
-      type: 'file',
-      owner: 'simulaclient',
-      permissions: defaultPerms.permissions,
-      downloadable: defaultPerms.downloadable,
-      viewable: defaultPerms.viewable,
-      playable: defaultPerms.playable,
-      content: '',
-      goto: '',
-      size: stats.size ? stats.size.toString() : '0',
-      created: new Date().toISOString(),
-      modified: new Date().toISOString()
+  serverPathToVirtualPath(serverPath) {
+    const pathMappings = {
+      '': '/',
+      'home/': '/home',
+      'home/simulaclient/': '/home/simulaclient',
+      'uploads/': '/uploads',
+      'files/': '/files',
+      'data/': '/data',
+      'documents/': '/documents',
+      'public/': '/public',
+      'assets/': '/assets',
+      'content/': '/content',
+      'media/': '/media'
     };
 
-    return fileObject;
+    return pathMappings[serverPath] || `/${serverPath.replace(/\/$/, '')}`;
   }
 
-  updateFilesystemAtPath(path, filename, fileData) {
-    try {
-      let target = fileSystem["/"];
+  ensureDirectoryExists(virtualPath) {
+    let current = fileSystem['/'];
 
-      if (path !== "/") {
-        const pathSegments = path.split("/").filter(Boolean);
-        for (const segment of pathSegments) {
-          if (target.children && target.children[segment]) {
-            target = target.children[segment];
-          } else {
-            throw new Error(`Path ${path} not found`);
-          }
-        }
-      }
-
-      if (!target.children) {
-        target.children = {};
-      }
-
-      target.children[filename] = fileData;
-    } catch (error) {
-      console.error('[FILESYSTEM] Error updating filesystem:', error);
-      throw error;
+    if (virtualPath === '/' || virtualPath === '') {
+      return current;
     }
+
+    const segments = virtualPath.split('/').filter(Boolean);
+
+    for (const segment of segments) {
+      if (!current.children) {
+        current.children = {};
+      }
+
+      if (!current.children[segment]) {
+        current.children[segment] = {
+          type: 'directory',
+          owner: 'root',
+          permissions: 'rwx',
+          children: {},
+          created: new Date().toISOString(),
+          modified: new Date().toISOString()
+        };
+      }
+
+      current = current.children[segment];
+    }
+
+    return current;
+  }
+
+  getDefaultPermissions(filename) {
+    const extension = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+    return DEFAULT_PERMISSIONS[extension] || DEFAULT_PERMISSIONS.default;
+  }
+
+  isProtectedFile(filename) {
+    return OS_PROTECTED_FILES.includes(filename) ||
+           filename.startsWith('.') ||
+           filename.includes('system') ||
+           filename.includes('boot') ||
+           filename.endsWith('.php') ||
+           filename.endsWith('.asp') ||
+           filename.endsWith('.jsp') ||
+           filename.includes('admin') ||
+           filename.includes('config') ||
+           filename.includes('passwd');
   }
 
   filterProtectedFiles(directory) {
@@ -337,13 +301,6 @@ class FilesystemManager {
     return filtered;
   }
 
-  isProtectedFile(filename) {
-    return OS_PROTECTED_FILES.includes(filename) ||
-           filename.startsWith('.') ||
-           filename.includes('system') ||
-           filename.includes('boot');
-  }
-
   saveFilesystem() {
     try {
       localStorage.setItem('simulacli_filesystem', JSON.stringify(fileSystem));
@@ -359,7 +316,6 @@ class FilesystemManager {
 
   startMonitoring() {
     if (this.isMonitoring) return;
-
     this.isMonitoring = true;
     console.log('[FILESYSTEM] Started filesystem monitoring');
   }
@@ -368,21 +324,6 @@ class FilesystemManager {
     this.isMonitoring = false;
     console.log('[FILESYSTEM] Stopped filesystem monitoring');
   }
-
-  async autoScanCurrentDirectory() {
-    try {
-      const hasNewFiles = await this.scanDirectoryForFiles(currentPath);
-      if (hasNewFiles) {
-        // Refresh current directory view
-        updateCurrentDirectory(currentPath);
-        console.log(`[FILESYSTEM] Auto-scan found new files in ${currentPath}`);
-        return true;
-      }
-    } catch (error) {
-      console.log('[FILESYSTEM] Auto-scan error:', error.message);
-    }
-    return false;
-  }
 }
 
 const fsManager = new FilesystemManager();
@@ -390,29 +331,30 @@ const fsManager = new FilesystemManager();
 async function loadFileSystem() {
   try {
     const storedFilesystem = localStorage.getItem('simulacli_filesystem');
+
     if (storedFilesystem) {
-      console.log('[FILESYSTEM] Loading from localStorage...');
+      console.log('[FILESYSTEM] Loading existing virtual filesystem...');
       fileSystem = JSON.parse(storedFilesystem);
-      resetToRoot();
-      console.log('[FILESYSTEM] Successfully loaded user filesystem from localStorage');
-
-      fsManager.startMonitoring();
-      return;
+    } else {
+      console.log('[FILESYSTEM] Loading base filesystem structure...');
+      const response = await fetch('os/dev/sda.json');
+      if (response.ok) {
+        fileSystem = await response.json();
+      } else {
+        throw new Error('Could not load base filesystem');
+      }
     }
 
-    console.log('[FILESYSTEM] Loading default filesystem from sda.json...');
-    const response = await fetch('os/dev/sda.json');
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    fileSystem = await response.json();
+    console.log('[FILESYSTEM] Discovering server files...');
+    await fsManager.discoverServerFiles();
+
     resetToRoot();
-    console.log('[FILESYSTEM] Successfully loaded default filesystem');
-
     fsManager.startMonitoring();
 
+    console.log('[FILESYSTEM] Filesystem ready');
+
   } catch (error) {
-    console.error('[FILESYSTEM] Could not load file system:', error);
+    console.error('[FILESYSTEM] Error during filesystem loading:', error);
 
     fileSystem = {
       "/": {
@@ -423,28 +365,25 @@ async function loadFileSystem() {
           "readme.txt": {
             "type": "file",
             "owner": "root",
-            "permissions": "rwx",
+            "permissions": "r--",
             "downloadable": true,
             "viewable": true,
             "playable": false,
-            "content": "SimulaCLI - https://github.com/thomasloupe/simulacli<br>Learn more about this project, and all of my work at https://thomasloupe.com!",
+            "content": "SimulaCLI - Server file discovery failed<br>Check console for errors.",
             "goto": "",
-            "size": "135"
+            "size": "100",
+            "serverFile": true
           }
         }
       }
     };
     resetToRoot();
-    console.log('[FILESYSTEM] Using fallback filesystem');
-
-    fsManager.startMonitoring();
   }
 }
 
 function resetToRoot() {
   currentDirectory = fileSystem["/"];
   currentPath = "/";
-
   currentDirectory = fsManager.filterProtectedFiles(currentDirectory);
 }
 
@@ -455,8 +394,6 @@ async function updateCurrentDirectory(newPath) {
   }, fileSystem["/"]);
 
   currentDirectory = fsManager.filterProtectedFiles(currentDirectory);
-
-  await fsManager.autoScanCurrentDirectory();
 }
 
 function saveFilesystem() {
@@ -466,7 +403,7 @@ function saveFilesystem() {
 function resetFilesystem() {
   try {
     localStorage.removeItem('simulacli_filesystem');
-    console.log('[FILESYSTEM] Cleared localStorage, will reload defaults');
+    console.log('[FILESYSTEM] Reset virtual filesystem, will reload server files');
     return loadFileSystem();
   } catch (error) {
     console.error('[FILESYSTEM] Error resetting filesystem:', error);
@@ -477,11 +414,14 @@ function getFilesystemStats() {
   try {
     const storedSize = localStorage.getItem('simulacli_filesystem')?.length || 0;
     const totalItems = countItems(fileSystem["/"]);
+    const serverFiles = countServerFiles(fileSystem["/"]);
 
     return {
       storedInLocalStorage: !!localStorage.getItem('simulacli_filesystem'),
       localStorageSize: storedSize,
       totalItems: totalItems,
+      serverFiles: serverFiles,
+      virtualFiles: totalItems - serverFiles,
       currentPath: currentPath,
       protectedFiles: OS_PROTECTED_FILES.length,
       monitoringActive: fsManager.isMonitoring
@@ -505,6 +445,23 @@ function countItems(directory) {
         count++;
         if (item.type === 'directory') {
           count += countItems(item);
+        }
+      }
+    }
+  }
+  return count;
+}
+
+function countServerFiles(directory) {
+  let count = 0;
+  if (directory.children) {
+    for (const [name, item] of Object.entries(directory.children)) {
+      if (!fsManager.isProtectedFile(name)) {
+        if (item.serverFile) {
+          count++;
+        }
+        if (item.type === 'directory') {
+          count += countServerFiles(item);
         }
       }
     }

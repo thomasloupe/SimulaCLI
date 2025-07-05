@@ -1,125 +1,79 @@
-// scan.js - File scanning command to detect uploaded files
-import { currentPath, filesystemManager } from '../filesystem.js';
-import { getCurrentUser } from '../../superuser.js';
+import { filesystemManager, loadFileSystem } from '../filesystem.js';
 
 export default async function scan(...args) {
-  const targetPath = args[0] || currentPath;
-  const recursive = args.includes('-r') || args.includes('--recursive');
-  const verbose = args.includes('-v') || args.includes('--verbose');
-
   if (args.includes('--help') || args.includes('-h')) {
     return showHelp();
   }
 
-  let output = `Scanning for files in ${targetPath}...<br>`;
+  const verbose = args.includes('-v') || args.includes('--verbose');
+
+  let output = '<strong>Scanning for server files...</strong><br><br>';
 
   try {
-    const hasNewFiles = await filesystemManager.scanDirectoryForFiles(targetPath);
+    const beforeCount = filesystemManager.discoveredServerFiles?.size || 0;
 
-    if (hasNewFiles) {
-      output += `<span style="color: #0f0;">✓</span> Found new files in ${targetPath}<br>`;
+    if (filesystemManager.discoveredServerFiles) {
+      filesystemManager.discoveredServerFiles.clear();
+    }
+
+    await filesystemManager.discoverServerFiles();
+
+    const afterCount = filesystemManager.discoveredServerFiles?.size || 0;
+    const newFiles = afterCount - beforeCount;
+
+    if (afterCount > 0) {
+      output += `<span style="color: #0f0;">✓</span> Found ${afterCount} server files<br>`;
+
+      if (newFiles > 0) {
+        output += `<span style="color: #0f0;">+</span> ${newFiles} newly discovered<br>`;
+      }
+
+      if (verbose) {
+        output += '<br><strong>Discovered files:</strong><br>';
+        for (const [path, info] of filesystemManager.discoveredServerFiles) {
+          output += `  • ${info.path}${info.name} (${info.size} bytes)<br>`;
+        }
+      }
     } else {
-      output += `<span style="color: #ff0;">-</span> No new files found in ${targetPath}<br>`;
+      output += `<span style="color: #ff0;">-</span> No server files found<br>`;
     }
 
-    if (recursive) {
-      const subdirectories = await getSubdirectories(targetPath);
+    output += '<br><strong>File Types:</strong><br>';
+    output += `<span style="color: #0ff;">Server files</span> - Files uploaded via FTP (owned by root)<br>`;
+    output += `<span style="color: #0f0;">Virtual files</span> - Files created in browser (your files)<br>`;
 
-      for (const subdir of subdirectories) {
-        try {
-          const subHasFiles = await filesystemManager.scanDirectoryForFiles(subdir);
-          if (subHasFiles) {
-            output += `<span style="color: #0f0;">✓</span> Found new files in ${subdir}<br>`;
-          } else if (verbose) {
-            output += `<span style="color: #888;">-</span> No new files in ${subdir}<br>`;
-          }
-        } catch (error) {
-          if (verbose) {
-            output += `<span style="color: #f80;">!</span> Could not scan ${subdir}: ${error.message}<br>`;
-          }
-        }
-      }
-    }
-
-    output += '<br><strong>Common upload locations checked:</strong><br>';
-    const commonPaths = ['/home/simulaclient', '/home', '/', '/tmp'];
-
-    for (const path of commonPaths) {
-      if (path === targetPath && !recursive) continue; // Already scanned
-
-      try {
-        const pathHasFiles = await filesystemManager.scanDirectoryForFiles(path);
-        if (pathHasFiles) {
-          output += `<span style="color: #0f0;">✓</span> ${path} - Found files<br>`;
-        } else if (verbose) {
-          output += `<span style="color: #888;">-</span> ${path} - No new files<br>`;
-        }
-      } catch (error) {
-        if (verbose) {
-          output += `<span style="color: #f80;">!</span> ${path} - ${error.message}<br>`;
-        }
-      }
-    }
-
-    output += '<br><em>Tip: Use "ls" to see if new files appeared, or "scan -r" to scan recursively</em>';
+    output += '<br><em>Use "ls" to see all files, or "reboot" to refresh the filesystem</em>';
 
     return output;
 
   } catch (error) {
-    return `scan: Error scanning ${targetPath}: ${error.message}`;
+    return `scan: Error during discovery: ${error.message}`;
   }
-}
-
-async function getSubdirectories(basePath) {
-  const subdirs = [];
-
-  try {
-    const targetDir = filesystemManager.getDirectoryAtPath(basePath);
-
-    if (targetDir && targetDir.children) {
-      for (const [name, item] of Object.entries(targetDir.children)) {
-        if (item.type === 'directory') {
-          const fullPath = basePath === '/' ? `/${name}` : `${basePath}/${name}`;
-          subdirs.push(fullPath);
-        }
-      }
-    }
-  } catch (error) {
-    console.log(`[SCAN] Error getting subdirectories of ${basePath}:`, error);
-  }
-
-  return subdirs;
 }
 
 function showHelp() {
-  return `File Scanner - Detect files uploaded via FTP or other means
+  return `Server File Scanner
 
-Usage: scan [path] [options]
-
-Arguments:
-  path                 Directory to scan (default: current directory)
+Usage: scan [options]
 
 Options:
-  -r, --recursive      Scan subdirectories recursively
-  -v, --verbose        Show detailed output including empty directories
+  -v, --verbose        Show detailed file listing
   -h, --help           Show this help message
 
-Examples:
-  scan                 Scan current directory for new files
-  scan /home          Scan /home directory
-  scan -r             Recursively scan current directory and subdirectories
-  scan /home -rv      Recursively scan /home with verbose output
+Description:
+  Scans the server for files that were uploaded via FTP or exist on the server
+  filesystem. These files will be owned by root and require root access to delete.
 
-How it works:
-  This command attempts to detect files that exist on the server filesystem
-  but are not yet registered in SimulaCLI's virtual filesystem. It does this
-  by making HTTP HEAD requests to common file names and patterns.
+  Virtual files created in the browser are stored separately in localStorage.
+
+Examples:
+  scan                 Quick scan for server files
+  scan -v              Verbose scan with file details
 
 Note:
-  - Files must be accessible via HTTP to be detected
-  - Common file extensions and names are checked automatically
-  - Detected files are automatically added to the filesystem
-  - Use "ls" after scanning to see newly detected files`;
+  - Server files are discovered automatically during boot
+  - This command forces a fresh scan
+  - Use "reboot" to completely refresh the filesystem`;
 }
 
-scan.help = "Scan for uploaded files not yet in the filesystem. Usage: scan [path] [-r] [-v]";
+scan.help = "Scan for server files uploaded via FTP. Usage: scan [-v]";
