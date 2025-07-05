@@ -1,257 +1,45 @@
+// filesystem.js - Virtual filesystem with manual file management
 let fileSystem = {};
 let currentDirectory = {};
 let currentPath = "/";
 let commandHistory = [];
 
 const OS_PROTECTED_FILES = [
-  'sda.json',
-  'terminal.js',
+  // Root level OS files
+  'index.html',
+  'password_generator.html',
+
+  // OS directory files
+  'autocomplete.js',
   'commands.js',
-  'filesystem.js',
-  'superuser.js',
   'operators.js',
   'repositories.js',
-  'autocomplete.js',
-  'index.html'
-];
+  'superuser.js',
+  'terminal.js',
 
-const DEFAULT_PERMISSIONS = {
-  '.txt': { permissions: 'rw-', downloadable: true, viewable: true, playable: false },
-  '.md': { permissions: 'rw-', downloadable: true, viewable: true, playable: false },
-  '.log': { permissions: 'rw-', downloadable: true, viewable: true, playable: false },
-  '.jpg': { permissions: 'rw-', downloadable: true, viewable: true, playable: false },
-  '.jpeg': { permissions: 'rw-', downloadable: true, viewable: true, playable: false },
-  '.png': { permissions: 'rw-', downloadable: true, viewable: true, playable: false },
-  '.gif': { permissions: 'rw-', downloadable: true, viewable: true, playable: false },
-  '.svg': { permissions: 'rw-', downloadable: true, viewable: true, playable: false },
-  '.mp3': { permissions: 'rw-', downloadable: true, viewable: false, playable: true },
-  '.wav': { permissions: 'rw-', downloadable: true, viewable: false, playable: true },
-  '.ogg': { permissions: 'rw-', downloadable: true, viewable: false, playable: true },
-  '.m4a': { permissions: 'rw-', downloadable: true, viewable: false, playable: true },
-  '.mp4': { permissions: 'rw-', downloadable: true, viewable: false, playable: true },
-  '.avi': { permissions: 'rw-', downloadable: true, viewable: false, playable: true },
-  '.mov': { permissions: 'rw-', downloadable: true, viewable: false, playable: true },
-  '.mkv': { permissions: 'rw-', downloadable: true, viewable: false, playable: true },
-  '.sh': { permissions: 'rwx', downloadable: true, viewable: true, playable: false },
-  '.js': { permissions: 'rwx', downloadable: true, viewable: true, playable: false },
-  '.py': { permissions: 'rwx', downloadable: true, viewable: true, playable: false },
-  'default': { permissions: 'rw-', downloadable: true, viewable: true, playable: false }
-};
+  // bin directory files
+  'filesystem.js',
+  'helpers.js',
+
+  // All command files in bin/commands/
+  'addfile', 'alias.js', 'awk.js', 'cat.js', 'cd.js', 'chmod.js', 'chown.js', 'clear.js', 'cp.js', 'curl.js', 'cut.js',
+  'date.js', 'diff.js', 'dig.js', 'echo.js', 'exit.js', 'file.js', 'find.js', 'free.js', 'grep.js',
+  'head.js', 'help.js', 'history.js', 'hostname.js', 'ifconfig.js', 'ip_addr.js', 'less.js', 'll.js',
+  'logout.js', 'ls.js', 'mkdir.js', 'more.js', 'mv.js', 'nslookup.js', 'passwd.js', 'ping.js',
+  'play.js', 'pwd.js', 'reboot.js', 'rm.js', 'scp.js', 'sed.js', 'shutdown.js', 'simpack.js',
+  'sleep.js', 'sort.js', 'su.js', 'sudo.js', 'tail.js', 'termconfig.js', 'touch.js', 'tr.js',
+  'unalias.js', 'uname.js', 'uniq.js', 'uptime.js', 'vi.js', 'view.js', 'wc.js', 'who.js', 'whoami.js',
+
+  // dev directory files
+  'sda.json',
+
+  // sfx directory files
+  'return.mp3', 'shutdown.mp3', 'terminal.mp3', 'terminal1.mp3'
+];
 
 class FilesystemManager {
   constructor() {
-    this.discoveredFiles = new Map();
-    this.discoveredDirectories = new Set();
     this.isMonitoring = false;
-  }
-
-  async crawlEverything() {
-    console.log('[CRAWLER] Starting complete filesystem crawl...');
-
-    await this.crawlDirectory('', '/');
-    await this.crawlDirectory('../', '/');
-
-    this.integrateDiscoveredFiles();
-    console.log(`[CRAWLER] Complete. Found ${this.discoveredFiles.size} files in ${this.discoveredDirectories.size} directories.`);
-  }
-
-  async crawlDirectory(serverPath, virtualPath, depth = 0) {
-    if (depth > 10) {
-      console.log(`[CRAWLER] Max depth reached for ${serverPath}`);
-      return;
-    }
-
-    console.log(`[CRAWLER] Crawling ${serverPath} -> ${virtualPath} (depth ${depth})`);
-
-    try {
-      const response = await fetch(serverPath, {
-        method: 'GET',
-        headers: { 'Accept': 'text/html' },
-        signal: AbortSignal.timeout(5000)
-      });
-
-      if (response.ok) {
-        const html = await response.text();
-        const { files, directories } = this.parseDirectoryContent(html);
-
-        this.discoveredDirectories.add(virtualPath);
-
-        for (const file of files) {
-          if (!this.isProtectedFile(file.name)) {
-            const fileServerPath = serverPath + file.name;
-            const fileVirtualPath = virtualPath === '/' ? `/${file.name}` : `${virtualPath}/${file.name}`;
-
-            this.discoveredFiles.set(fileVirtualPath, {
-              name: file.name,
-              serverPath: fileServerPath,
-              virtualPath: fileVirtualPath,
-              size: file.size || 'unknown',
-              lastModified: file.lastModified || new Date().toISOString()
-            });
-
-            console.log(`[CRAWLER] Found file: ${fileVirtualPath} (${file.size})`);
-          }
-        }
-
-        for (const dir of directories) {
-          if (!this.isProtectedFile(dir.name) && !dir.name.startsWith('.') && dir.name !== 'os') {
-            const dirServerPath = serverPath + dir.name + '/';
-            const dirVirtualPath = virtualPath === '/' ? `/${dir.name}` : `${virtualPath}/${dir.name}`;
-
-            await this.crawlDirectory(dirServerPath, dirVirtualPath, depth + 1);
-          }
-        }
-      }
-    } catch (error) {
-      console.log(`[CRAWLER] Could not access ${serverPath}: ${error.message}`);
-    }
-  }
-
-  parseDirectoryContent(html) {
-    const files = [];
-    const directories = [];
-
-    const linkPattern = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi;
-    let match;
-
-    while ((match = linkPattern.exec(html)) !== null) {
-      const [, href, linkText] = match;
-
-      if (href === '../' || href === './' || href === '#' || href === '/' ||
-          href.startsWith('http') || href.startsWith('mailto') || href.startsWith('ftp') ||
-          href.startsWith('javascript:') || href.startsWith('?')) {
-        continue;
-      }
-
-      const decodedHref = decodeURIComponent(href);
-
-      if (decodedHref.endsWith('/')) {
-        const dirName = decodedHref.slice(0, -1);
-        directories.push({
-          name: dirName,
-          href: decodedHref
-        });
-      } else {
-        files.push({
-          name: decodedHref,
-          href: decodedHref,
-          size: 'unknown',
-          lastModified: new Date().toISOString()
-        });
-      }
-    }
-
-    const tableRowPattern = /<tr[^>]*>.*?<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>.*?(?:(\d+(?:\.\d+)?[KMGTB]*).*?)?<\/tr>/gi;
-
-    while ((match = tableRowPattern.exec(html)) !== null) {
-      const [, href, name, sizeStr] = match;
-
-      if (href && !href.startsWith('?') && !href.startsWith('#') && !href.startsWith('http')) {
-        const decodedHref = decodeURIComponent(href);
-
-        if (decodedHref.endsWith('/')) {
-          const dirName = decodedHref.slice(0, -1);
-          if (!directories.some(d => d.name === dirName)) {
-            directories.push({
-              name: dirName,
-              href: decodedHref
-            });
-          }
-        } else {
-          let size = 'unknown';
-          if (sizeStr && /^\d+/.test(sizeStr)) {
-            size = sizeStr.trim();
-          }
-
-          if (!files.some(f => f.name === decodedHref)) {
-            files.push({
-              name: decodedHref,
-              href: decodedHref,
-              size: size,
-              lastModified: new Date().toISOString()
-            });
-          }
-        }
-      }
-    }
-
-    return { files, directories };
-  }
-
-  integrateDiscoveredFiles() {
-    console.log('[INTEGRATION] Integrating discovered files into virtual filesystem...');
-
-    for (const [virtualPath, fileInfo] of this.discoveredFiles) {
-      const pathParts = virtualPath.split('/').filter(Boolean);
-      const fileName = pathParts.pop();
-      const dirPath = '/' + pathParts.join('/');
-
-      const targetDir = this.ensureDirectoryExists(dirPath);
-
-      if (!targetDir.children) {
-        targetDir.children = {};
-      }
-
-      if (!targetDir.children[fileName]) {
-        const perms = this.getDefaultPermissions(fileName);
-
-        targetDir.children[fileName] = {
-          type: 'file',
-          owner: 'root',
-          permissions: 'r--',
-          downloadable: perms.downloadable,
-          viewable: perms.viewable,
-          playable: perms.playable,
-          content: '',
-          goto: fileInfo.serverPath,
-          size: fileInfo.size.toString(),
-          created: fileInfo.lastModified,
-          modified: fileInfo.lastModified,
-          serverFile: true,
-          superuser: "true"
-        };
-
-        console.log(`[INTEGRATION] Added: ${virtualPath}`);
-      }
-    }
-
-    this.saveFilesystem();
-  }
-
-  ensureDirectoryExists(virtualPath) {
-    let current = fileSystem['/'];
-
-    if (virtualPath === '/' || virtualPath === '') {
-      return current;
-    }
-
-    const segments = virtualPath.split('/').filter(Boolean);
-
-    for (const segment of segments) {
-      if (!current.children) {
-        current.children = {};
-      }
-
-      if (!current.children[segment]) {
-        current.children[segment] = {
-          type: 'directory',
-          owner: 'root',
-          permissions: 'rwx',
-          children: {},
-          created: new Date().toISOString(),
-          modified: new Date().toISOString()
-        };
-      }
-
-      current = current.children[segment];
-    }
-
-    return current;
-  }
-
-  getDefaultPermissions(filename) {
-    const extension = filename.substring(filename.lastIndexOf('.')).toLowerCase();
-    return DEFAULT_PERMISSIONS[extension] || DEFAULT_PERMISSIONS.default;
   }
 
   isProtectedFile(filename) {
@@ -326,9 +114,6 @@ async function loadFileSystem() {
       }
     }
 
-    console.log('[FILESYSTEM] Auto-crawling entire directory structure...');
-    await filesystemManager.crawlEverything();
-
     resetToRoot();
     filesystemManager.startMonitoring();
 
@@ -350,10 +135,10 @@ async function loadFileSystem() {
             "downloadable": true,
             "viewable": true,
             "playable": false,
-            "content": "SimulaCLI - Server file discovery failed<br>Check console for errors.",
+            "content": "SimulaCLI - Manual file management enabled<br>Use 'sudo addfile' to add server files to the virtual filesystem.",
             "goto": "",
             "size": "100",
-            "serverFile": true
+            "serverFile": false
           }
         }
       }
@@ -384,7 +169,7 @@ function saveFilesystem() {
 function resetFilesystem() {
   try {
     localStorage.removeItem('simulacli_filesystem');
-    console.log('[FILESYSTEM] Reset virtual filesystem, will reload server files');
+    console.log('[FILESYSTEM] Reset virtual filesystem');
     return loadFileSystem();
   } catch (error) {
     console.error('[FILESYSTEM] Error resetting filesystem:', error);
@@ -464,6 +249,5 @@ export {
   resetFilesystem,
   getFilesystemStats,
   filesystemManager,
-  DEFAULT_PERMISSIONS,
   OS_PROTECTED_FILES
 };
