@@ -12,30 +12,39 @@ SimulaCLI is a customizable, modular, simulated Linux terminal created in JavaSc
 
 ## Introduction
 
-SimulaCLI simulates a real, fully-customizable Linux terminal environment that runs on a client's web browser with no server-side processing. SimulaCLI has a local storage filesystem, many basic linux commands, viewable, playable, downloadable files, a permission system, as well as a built-in package manager that allows users to create their own custom SimulaCLI commands.
+SimulaCLI simulates a real, Linux terminal environment that runs on a client's web browser with no server-side processing. SimulaCLI has a local storage filesystem, many basic linux commands, a media player and viewer for viewable and playable files.   downloadable files, a permission system, as well as a built-in package manager that allows users to create their own custom SimulaCLI commands.
+
+### Features
+
+- Customizable Terminal - Adjust terminal text, background, caret, cursor colors/size, sound effects and much more
+- No Server Side Code - SimulaCLI runs completely in the client's browser. No PHP, Node, etc.
+- Tab Autocomplete, Reverse Search and History - SimulaCLI functions exactly how you'd expect any linux terminal to function, support reverse searches, tab autocompletion, command history, previous/last command used, and arrow key command history.
+- Smart Interruption Support - SimulaCLI knows when you're cancelling a task or copying text when you interrupt with `CTRL+C`.
+- Operators - Supports the following operators to chain and/or pipe commands into each other: `&, &&, |, >, >>`
+- Custom Media Players - SimulaCLI has its own media player and image viewer for audio and video files.
+- Specify Downloadable Content - Mark files as "downloadable" for users to download via the `scp` command.
+- Permission Management - Use `chmod` and `chown` to specify default permissions for files and directories to permit or prohibit interaction.
+- Root Authentication - Set a root password to block users from accessing prohibited files and/or directories.
+- Simpack Package Manager - Download, install, remove, update, and debug official and community packages built exclusively for SimulaCLI.
+- Repository management - Set up your own repositories and create your own custom SimulaCLI experience.
+- Remote, Server, and Local Filesystem - Link external sources as files, add and remove files uploaded to your site to SimulaCLI's filesystem, and run the entire OS in the client's browser, allowing thousands of users to have their own tailored SimulaCLI experience that's uniquely built from your rules.
 
 ## Getting Started
 
-To get started, simply clone this repository and move the contents inside the `html`, `public_html`, or `domainnamehere.tld` folder into your website's home directory, then navigate to your site to launch SimulaCLI.
+To get started, simply clone this repository and move the contents inside your website's root directory, then navigate to your site to launch SimulaCLI.
 
-### Password Configuration
+### Root Password Configuration
 
-**IMPORTANT**: Change the sudo password file for authentication
-The default password is `hacktheplanet` encoded in Base64
-
-1. **Create password file**: Use the included `passwordgenerator.html` utility
-2. **Generate base64 password**: Enter your desired password to get a base64-encoded string
-3. **Change sudo password**: Change the password in the `sudo` file located in the directory **above** your SimulaCLI installation
-4. **Paste content**: Save the base64 string to the `sudo` file
-5. **Root passwords can be changed**: Just like a typical linux system, `root` has the ability to change its password, which will generate a new base64 string in the `sudo` file
-
-### Security Notes
+1. Visit `yoursite.tld/password_generator.html`
+2. Generate a safe root password which will be converted to base64
+3. Create two files at the root level of your site: name one the base64 text that was generated with `.passwd` at the end, and the second file `auth.setup`.
 
 **Important Security Information:**
 
-- Base64 encoding is **NOT encryption** - it's only basic obfuscation
-- All authentication happens client-side and can be bypassed
-- **DO NOT use this system to protect truly sensitive data**
+- You don't need to remove `password_generator.html` after setting a root password. Checks are made to ensure passwords cannot be changed if `auth.setup` and a `.passwd` files exist.
+- To achieve the best and most secure experience, please disable directory traversal on your website
+- Please note that base64 encoding is **NOT encryption** - it's only basic obfuscation. Your root password is stored in the root directory and while unlikely, could be guessed.
+- **DO NOT use SimulaCLI to protect truly sensitive data** - Credentials are unsafe without server-side protections in place.
 
 ## SimulaCLI Commands
 
@@ -71,6 +80,8 @@ The default password is `hacktheplanet` encoded in Base64
 
 ### File Operations
 
+- `addfile`: Add a file to the virtual filesystem
+- `removefile`: Remove a file from the virtual filesystem previously added by `addfile`
 - `scp`: Download a file if that file is available for download. Example: `scp track1.mp3`
 - `play`: Plays an audio/video file.
 - `cp`: Copy files and directories. Example: `cp file1.txt file2.txt` or `cp -r folder1 folder2`
@@ -153,8 +164,6 @@ SimulaCLI supports several operators for command chaining, piping, and redirecti
   - Example: `cd music && ls` - Change to music directory, then list contents if successful
 - `&` - **Background operator**: Execute command in background (simulated)
   - Example: `sleep 10 &` - Run sleep command in background
-
-**Note:** Commands can be interrupted with `Ctrl+C`, and operators respect proper command execution flow and error handling.
 
 ## Package System
 
@@ -269,7 +278,7 @@ To contribute your own community package, use the official or community packages
 
 ### Volumes
 
-SimulaCLI will automatically recognize files and/or directories placed in pre-created directories whether uploaded or created by a user and added to `sda.json`.
+SimulaCLI doesn't automatically recognize files and/or directories created, but files can be added to virtual storage using `addfile` and `removefile`. This adds the files to `sda.json`.
 The default volume structure is as follows:
 
 ```json
@@ -321,57 +330,6 @@ The default volume structure is as follows:
             "children": {}
           }
         }
-      },
-      "sfx": {
-        "type": "directory",
-        "owner": "root",
-        "permissions": "rwx",
-        "children": {
-          "return.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "os/sfx/return.mp3",
-            "size": "48000"
-          },
-          "shutdown.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "os/sfx/shutdown.mp3",
-            "size": "52000"
-          },
-          "terminal.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "os/sfx/terminal.mp3",
-            "size": "45000"
-          },
-          "terminal1.mp3": {
-            "type": "file",
-            "owner": "root",
-            "permissions": "rw-",
-            "downloadable": true,
-            "viewable": false,
-            "playable": true,
-            "content": "",
-            "goto": "os/sfx/terminal1.mp3",
-            "size": "42000"
-          }
-        }
       }
     }
   }
@@ -396,14 +354,9 @@ Size: The size of the file on disk
 ### Method 1: Without Simpack Package Manager
 
 1. Write the JavaScript code for your command.
-2. On the last line of your command's JavaScript file, add a help property. This is required for the `help` command. Here's an example using the `clear` command that's included with SimulaCLI:
+2. On the last line of your command's JavaScript file, add a help property. This is required for the `help` command. Here's an example of a help line using the `clear` command that's included with SimulaCLI:
 
     ```javascript
-    export default async function clear() {
-      document.getElementById('terminal').innerHTML = '';
-      return '';
-    }
-
     clear.help = "Clear the terminal screen. Usage: clear";
     ```
 
@@ -411,16 +364,23 @@ Size: The size of the file on disk
 
     ```javascript
     const commandFiles = [
-      'alias.js', 'awk.js', 'cat.js', 'cd.js', 'chmod.js', 'chown.js', 'clear.js', 'cp.js', 'curl.js', 'cut.js', 'date.js',
+      'addfile.js', 'alias.js', 'awk.js', 'cat.js', 'cd.js', 'chmod.js', 'chown.js', 'clear.js', 'cp.js', 'curl.js', 'cut.js', 'date.js',
       'diff.js', 'dig.js', 'echo.js', 'exit.js', 'file.js', 'find.js', 'free.js', 'grep.js', 'head.js',
       'help.js', 'history.js', 'hostname.js', 'ifconfig.js', 'ip_addr.js', 'less.js', 'll.js',
       'logout.js', 'ls.js', 'mkdir.js', 'more.js', 'mv.js', 'nslookup.js', 'passwd.js', 'ping.js',
-      'play.js', 'pwd.js', 'reboot.js', 'rm.js', 'scp.js', 'sed.js', 'shutdown.js', 'simpack.js',
+      'play.js', 'pwd.js', 'reboot.js', 'removefile.js', 'rm.js', 'scp.js', 'sed.js', 'shutdown.js', 'simpack.js',
       'sleep.js', 'sort.js', 'su.js', 'sudo.js', 'tail.js', 'termconfig.js', 'touch.js', 'tr.js',
       'uname.js', 'unalias.js', 'uniq.js', 'uptime.js', 'vi.js', 'view.js', 'wc.js', 'who.js', 'whoami.js'
+    ];
     ```
 
-**Important**: Every command is named after its filename within `/bin/commands/`. SimulaCLI formats the color of the command, its purpose and `Usage:` differently for readability. If you create a command that lacks help or usage explanation, color formatting will fail. Your command may likely fail as well. Manpages do not exist in SimulaCLI. Instead, flags are explained in the `Usage:` section in the last line of the file.
+    **Important**
+
+    - Manpages do not exist in SimulaCLI. Instead, flags and args are explained in the `Usage:` section in the last line of the file's help line.
+    - The filename for your command in `/bin/commands/` should be named the same as the command itself
+    - SimulaCLI formats the color of the `command`, its `purpose`, and `usage` for readability. Always ensure to have a help line that includes the purpose and usage of your command.
+    Example:
+    `alias.help = "Create command shortcuts. Usage: alias [name='command'] or alias [name] or alias (list all)";`
 
 ### Method 2: Simpack Package System
 
