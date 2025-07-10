@@ -2,14 +2,23 @@
 // Community package for SimulaCLI
 
 export default async function iss(...args) {
+  let loadingInterval;
+
   try {
-    // Show loading message
+    // Show animated loading message
     const terminal = document.getElementById('terminal');
     const loadingDiv = document.createElement('div');
-    loadingDiv.textContent = 'Tracking ISS position...';
     terminal.appendChild(loadingDiv);
 
-    // Fetch ISS current position
+    // Animate the loading message
+    let dots = 0;
+    const maxDots = 3;
+    loadingInterval = setInterval(() => {
+      dots = (dots + 1) % (maxDots + 1);
+      loadingDiv.textContent = 'Locating ISS' + '.'.repeat(dots);
+    }, 500);
+
+    // Fetch ISS current position data
     const issResponse = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
     if (!issResponse.ok) {
       throw new Error('Failed to fetch ISS data');
@@ -21,7 +30,8 @@ export default async function iss(...args) {
     const altitude = parseFloat(issData.altitude);
     const velocity = parseFloat(issData.velocity);
 
-    // Remove loading message
+    // Stop animation and remove loading message
+    clearInterval(loadingInterval);
     terminal.removeChild(loadingDiv);
 
     // Get location information
@@ -67,6 +77,19 @@ export default async function iss(...args) {
     return output;
 
   } catch (error) {
+    // Clean up animation and loading message
+    if (loadingInterval) {
+      clearInterval(loadingInterval);
+    }
+
+    const terminal = document.getElementById('terminal');
+    const loadingDivs = terminal.querySelectorAll('div');
+    loadingDivs.forEach(div => {
+      if (div.textContent && div.textContent.includes('Locating ISS')) {
+        terminal.removeChild(div);
+      }
+    });
+
     return `Error tracking ISS: ${error.message}<br>The ISS API might be temporarily unavailable.`;
   }
 }
@@ -135,15 +158,6 @@ function getLocationFromCoordinates(lat, lng) {
 }
 
 function generateASCIIIndicator(lat, lng) {
-  // Create a simple ASCII world representation
-  const worldMap = [
-    "    ╭────────────────────────────────────────╮",
-    "    │                WORLD                   │",
-    "    │  🌍 ← ISS is somewhere around here     │",
-    "    │                                        │",
-    "    ╰────────────────────────────────────────╯"
-  ];
-
   // Determine rough position on ASCII map
   let region = "somewhere";
   if (lng < -60) region = "Americas";
@@ -153,13 +167,24 @@ function generateASCIIIndicator(lat, lng) {
 
   let hemisphere = lat > 0 ? "Northern" : "Southern";
 
+  // Format coordinates and center them in the box
+  const latStr = formatCoordinate(lat, 'lat');
+  const lngStr = formatCoordinate(lng, 'lng');
+  const coordText = `${latStr} ${lngStr}`;
+
+  // Center the coordinates in a 37-character wide box
+  const boxWidth = 37;
+  const padding = Math.max(0, Math.floor((boxWidth - coordText.length) / 2));
+  const rightPadding = boxWidth - coordText.length - padding;
+  const centeredCoords = ' '.repeat(padding) + coordText + ' '.repeat(rightPadding);
+
   return `<pre>Global Position: ${hemisphere} ${region}
 
 ╭─────────────────────────────────────╮
 │        ISS ORBITAL POSITION         │
 │                                     │
 │   🛰️  Currently orbiting above:     │
-│       ${formatCoordinate(lat, 'lat')} ${formatCoordinate(lng, 'lng')}                    │
+│${centeredCoords}│
 │                                     │
 ╰─────────────────────────────────────╯</pre>`;
 }
