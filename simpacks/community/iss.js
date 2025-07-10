@@ -3,30 +3,35 @@
 
 export default async function iss(...args) {
   try {
-    // Show loading message
     const terminal = document.getElementById('terminal');
-    const loadingDiv = document.createElement('div');
-    loadingDiv.textContent = 'Tracking ISS position...';
-    terminal.appendChild(loadingDiv);
 
-    // Fetch ISS current position
-    const issResponse = await fetch('https://api.open-notify.org/iss-now.json');
-    if (!issResponse.ok) {
-      throw new Error('Failed to fetch ISS data');
+    let output = `<strong>ISS Tracker</strong><br><br>`;
+    output += `Attempting to fetch ISS position...<br>`;
+
+    // Try multiple ISS APIs with different approaches
+    const issData = await fetchISSData();
+
+    if (!issData) {
+      return output + `<br><span style="color: #ff0;">⚠ Unable to fetch real-time ISS data</span><br><br>` +
+             generateSimulatedData();
     }
 
-    const issData = await issResponse.json();
-    const lat = parseFloat(issData.iss_position.latitude);
-    const lng = parseFloat(issData.iss_position.longitude);
-
-    // Remove loading message
-    terminal.removeChild(loadingDiv);
+    const lat = parseFloat(issData.latitude);
+    const lng = parseFloat(issData.longitude);
+    const timestamp = issData.timestamp;
 
     // Get location information
-    let locationInfo = 'Unknown location';
+    let locationInfo = getLocationFromCoordinates(lat, lng);
+
+    // Try to get more detailed location info if possible
     try {
       const geoResponse = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`,
+        {
+          method: 'GET',
+          mode: 'cors',
+          cache: 'no-cache'
+        }
       );
       if (geoResponse.ok) {
         const geoData = await geoResponse.json();
@@ -34,7 +39,6 @@ export default async function iss(...args) {
       }
     } catch (error) {
       console.log('Geocoding failed, using coordinate-based location');
-      locationInfo = getLocationFromCoordinates(lat, lng);
     }
 
     // Generate OpenStreetMap link
@@ -52,8 +56,8 @@ export default async function iss(...args) {
     const asciiMap = generateASCIIIndicator(lat, lng);
 
     // Build output
-    let output = `<strong>ISS Current Status:</strong><br>`;
-    output += `<br>`;
+    output += `<span style="color: #0f0;">✓ Live ISS data retrieved successfully!</span><br><br>`;
+    output += `<strong>ISS Current Status:</strong><br>`;
     output += `Position: ${latStr}, ${lngStr}<br>`;
     output += `Location: ${locationInfo}<br>`;
     output += `Altitude: ~${altitude} km above Earth<br>`;
@@ -61,15 +65,111 @@ export default async function iss(...args) {
     output += `<br>`;
     output += `${asciiMap}<br>`;
     output += `<br>`;
-    output += `<a href="${mapLink}" target="_blank">View on OpenStreetMap</a><br>`;
+    output += `<a href="${mapLink}" target="_blank" style="color: #0ff;">📍 View on OpenStreetMap</a><br>`;
     output += `<br>`;
-    output += `<em>Data updated: ${new Date().toLocaleTimeString()}</em>`;
+    output += `<em>Data updated: ${new Date(timestamp * 1000).toLocaleString()}</em>`;
 
     return output;
 
   } catch (error) {
-    return `Error tracking ISS: ${error.message}<br>The ISS API might be temporarily unavailable.`;
+    console.error('ISS Error:', error);
+    return `<strong>ISS Tracker</strong><br><br>` +
+           `<span style="color: #ff0;">⚠ Error: ${error.message}</span><br><br>` +
+           generateSimulatedData();
   }
+}
+
+async function fetchISSData() {
+  const apis = [
+    {
+      url: 'https://api.open-notify.org/iss-now.json',
+      parser: (data) => ({
+        latitude: data.iss_position.latitude,
+        longitude: data.iss_position.longitude,
+        timestamp: data.timestamp
+      })
+    },
+    {
+      url: 'https://api.wheretheiss.at/v1/satellites/25544',
+      parser: (data) => ({
+        latitude: data.latitude,
+        longitude: data.longitude,
+        timestamp: Math.floor(Date.now() / 1000)
+      })
+    }
+  ];
+
+  for (const api of apis) {
+    try {
+      console.log(`Trying ISS API: ${api.url}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const response = await fetch(api.url, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-cache',
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const parsedData = api.parser(data);
+
+      console.log('ISS API success:', parsedData);
+      return parsedData;
+
+    } catch (error) {
+      console.log(`API ${api.url} failed:`, error.message);
+      continue;
+    }
+  }
+
+  return null;
+}
+
+function generateSimulatedData() {
+  // Generate realistic ISS coordinates (simulate orbital path)
+  const now = Date.now();
+  const orbitalPeriod = 92.68 * 60 * 1000; // ISS orbital period in milliseconds
+  const phase = (now % orbitalPeriod) / orbitalPeriod * 2 * Math.PI;
+
+  // Simplified orbital mechanics simulation
+  const inclination = 51.6 * Math.PI / 180; // ISS orbital inclination
+  const lat = Math.sin(inclination) * Math.sin(phase) * 180 / Math.PI;
+  const lng = ((now / 60000) * 4) % 360 - 180; // Rough longitude progression
+
+  const latStr = formatCoordinate(lat, 'lat');
+  const lngStr = formatCoordinate(lng, 'lng');
+  const locationInfo = getLocationFromCoordinates(lat, lng);
+  const mapLink = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=4#map=4/${lat}/${lng}`;
+  const asciiMap = generateASCIIIndicator(lat, lng);
+
+  let output = `<span style="color: #ff0;">📡 Using simulated ISS position</span><br>`;
+  output += `<em>(Live APIs unavailable - showing estimated orbital position)</em><br><br>`;
+  output += `<strong>ISS Estimated Status:</strong><br>`;
+  output += `Position: ${latStr}, ${lngStr}<br>`;
+  output += `Location: ${locationInfo}<br>`;
+  output += `Altitude: ~408 km above Earth<br>`;
+  output += `Speed: ~27,600 km/h<br>`;
+  output += `<br>`;
+  output += `${asciiMap}<br>`;
+  output += `<br>`;
+  output += `<a href="${mapLink}" target="_blank" style="color: #0ff;">📍 View on OpenStreetMap</a><br>`;
+  output += `<br>`;
+  output += `<em>Simulated data - ${new Date().toLocaleString()}</em><br>`;
+  output += `<em style="color: #888;">Note: ISS completes one orbit every ~93 minutes</em>`;
+
+  return output;
 }
 
 function formatCoordinate(coord, type) {
@@ -104,9 +204,6 @@ function formatLocation(geoData) {
 }
 
 function getLocationFromCoordinates(lat, lng) {
-  // Basic ocean/continent detection based on coordinates
-  // This is a simplified fallback
-
   // Major oceans (simplified ranges)
   if (lng > -30 && lng < 20 && lat > -60 && lat < 70) {
     return 'Over Atlantic Ocean';
@@ -136,15 +233,6 @@ function getLocationFromCoordinates(lat, lng) {
 }
 
 function generateASCIIIndicator(lat, lng) {
-  // Create a simple ASCII world representation
-  const worldMap = [
-    "    ╭────────────────────────────────────────╮",
-    "    │                WORLD                   │",
-    "    │  🌍 ← ISS is somewhere around here     │",
-    "    │                                        │",
-    "    ╰────────────────────────────────────────╯"
-  ];
-
   // Determine rough position on ASCII map
   let region = "somewhere";
   if (lng < -60) region = "Americas";
