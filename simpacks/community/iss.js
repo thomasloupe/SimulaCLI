@@ -10,7 +10,7 @@ export default async function iss(...args) {
     terminal.appendChild(loadingDiv);
 
     // Fetch ISS current position
-    const issResponse = await fetch('http://api.open-notify.org/iss-now.json');
+    const issResponse = await fetch('https://api.open-notify.org/iss-now.json');
     if (!issResponse.ok) {
       throw new Error('Failed to fetch ISS data');
     }
