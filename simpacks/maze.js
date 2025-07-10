@@ -218,17 +218,20 @@ export default async function maze(...args) {
 
   function setupExitHandler() {
     const exitHandler = (event) => {
-      document.removeEventListener('keydown', exitHandler);
-      document.removeEventListener('keydown', keyHandler);
+      event.preventDefault();
+      event.stopPropagation();
+      document.removeEventListener('keydown', exitHandler, true);
+      document.removeEventListener('keydown', keyHandler, true);
       terminal.removeChild(gameContainer);
       commandInput.disabled = false;
       commandInput.focus();
     };
-    document.addEventListener('keydown', exitHandler);
+    document.addEventListener('keydown', exitHandler, true);
   }
 
   function keyHandler(event) {
     event.preventDefault();
+    event.stopPropagation();
 
     switch (event.key.toLowerCase()) {
       case 'w':
@@ -265,7 +268,7 @@ export default async function maze(...args) {
   }
 
   // Set up game
-  document.addEventListener('keydown', keyHandler);
+  document.addEventListener('keydown', keyHandler, true); // Use capture mode
   statusArea.innerHTML = `Navigate from 🟢 to 🚪! Use WASD or arrow keys to move.`;
   renderMaze();
 

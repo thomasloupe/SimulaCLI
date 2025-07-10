@@ -179,7 +179,7 @@ export default async function matrix(...args) {
 </span>`;
 
     setTimeout(() => {
-      document.removeEventListener('keydown', keyHandler);
+      document.removeEventListener('keydown', keyHandler, true);
       terminal.removeChild(matrixContainer);
       commandInput.disabled = false;
       commandInput.focus();
@@ -189,6 +189,7 @@ export default async function matrix(...args) {
   function keyHandler(event) {
     if (event.key === 'Escape') {
       event.preventDefault();
+      event.stopPropagation();
       stopMatrix();
     }
   }

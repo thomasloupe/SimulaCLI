@@ -21,7 +21,7 @@ export default async function hangman(...args) {
 
   // Disable command input during game
   commandInput.disabled = true;
-  commandInput.placeholder = 'Type a letter and press Enter...';
+  commandInput.style.display = 'none'; // Hide input completely
 
   // Create game container
   const gameContainer = document.createElement('div');
@@ -79,7 +79,7 @@ export default async function hangman(...args) {
     color: #888;
     font-size: 12px;
   `;
-  controlsInfo.innerHTML = 'Type letters to guess • ESC to quit';
+  controlsInfo.innerHTML = 'Press any letter to guess • ESC to quit';
 
   gameContainer.appendChild(gameTitle);
   gameContainer.appendChild(gallowsArea);
@@ -234,17 +234,23 @@ export default async function hangman(...args) {
 
   function setupExitHandler() {
     const exitHandler = (event) => {
-      document.removeEventListener('keydown', exitHandler);
-      document.removeEventListener('keydown', keyHandler);
+      event.preventDefault();
+      event.stopPropagation();
+      document.removeEventListener('keydown', exitHandler, true);
+      document.removeEventListener('keydown', keyHandler, true);
       terminal.removeChild(gameContainer);
       commandInput.disabled = false;
-      commandInput.placeholder = 'Type commands here...';
+      commandInput.style.display = 'block';
       commandInput.focus();
     };
-    document.addEventListener('keydown', exitHandler);
+    document.addEventListener('keydown', exitHandler, true);
   }
 
   function keyHandler(event) {
+    // Prevent ALL default behavior during the game
+    event.preventDefault();
+    event.stopPropagation();
+
     if (!gameActive) return;
 
     if (event.key === 'Escape') {
@@ -258,21 +264,14 @@ export default async function hangman(...args) {
       return;
     }
 
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      const input = commandInput.value.trim();
-      commandInput.value = '';
-
-      if (input.length === 1) {
-        makeGuess(input);
-      } else if (input.length > 1) {
-        statusArea.innerHTML = `<span style="color: #ff0;">Please enter only one letter at a time!</span>`;
-      }
+    // Handle letter input directly from keydown (no need for Enter)
+    if (/^[a-zA-Z]$/.test(event.key)) {
+      makeGuess(event.key);
     }
   }
 
   // Set up game
-  document.addEventListener('keydown', keyHandler);
+  document.addEventListener('keydown', keyHandler, true); // Use capture mode
   updateDisplay();
   statusArea.innerHTML = `Guess the ${word.length}-letter word! Good luck!`;
 

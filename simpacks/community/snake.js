@@ -140,19 +140,23 @@ export default async function snake(...args) {
 
     // Wait for any key press to exit
     const exitHandler = (event) => {
-      document.removeEventListener('keydown', exitHandler);
-      document.removeEventListener('keydown', keyHandler);
+      event.preventDefault();
+      event.stopPropagation();
+      document.removeEventListener('keydown', exitHandler, true);
+      document.removeEventListener('keydown', keyHandler, true);
       terminal.removeChild(gameContainer);
       commandInput.disabled = false;
       commandInput.focus();
     };
-    document.addEventListener('keydown', exitHandler);
+    document.addEventListener('keydown', exitHandler, true);
   }
 
   function keyHandler(event) {
     if (!gameRunning) return;
 
+    // Prevent ALL default behavior and stop propagation
     event.preventDefault();
+    event.stopPropagation();
 
     switch (event.key.toLowerCase()) {
       case 'w':
@@ -178,7 +182,7 @@ export default async function snake(...args) {
   }
 
   // Set up game
-  document.addEventListener('keydown', keyHandler);
+  document.addEventListener('keydown', keyHandler, true); // Use capture mode
   renderGame();
 
   // Start game loop
