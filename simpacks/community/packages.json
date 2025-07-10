@@ -16,5 +16,29 @@
     "description": "Track the International Space Station's current position with map",
     "version": "1.0.0",
     "author": "Thomas Loupe"
+  },
+  {
+    "name": "snake",
+    "description": "Classic snake game in the terminal",
+    "version": "1.0.0",
+    "author": "Thomas Loupe"
+  },
+  {
+    "name": "hangman",
+    "description": "Word guessing game with ASCII gallows",
+    "version": "1.0.0",
+    "author": "Thomas Loupe"
+  },
+  {
+    "name": "maze",
+    "description": "Generate and solve ASCII mazes with navigation",
+    "version": "1.0.0",
+    "author": "Thomas Loupe"
+  },
+  {
+    "name": "matrix",
+    "description": "Animated Matrix rain effect",
+    "version": "1.0.0",
+    "author": "Thomas Loupe"
   }
 ]
